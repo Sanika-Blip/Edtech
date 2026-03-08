@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'chapter_page.dart';
 
 class Home1Page extends StatefulWidget {
   const Home1Page({super.key});
@@ -45,15 +46,10 @@ class _Home1PageState extends State<Home1Page> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Welcome header
                     _buildHeader(),
                     const SizedBox(height: 20),
-
-                    // Study / Language toggle
                     _buildToggle(),
                     const SizedBox(height: 24),
-
-                    // Show content based on toggle
                     if (_toggleIndex == 0) _buildStudyContent(),
                     if (_toggleIndex == 1) _buildLanguagePlaceholder(),
                   ],
@@ -131,17 +127,12 @@ class _Home1PageState extends State<Home1Page> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Subjects section
         _SectionTitle(title: 'Subjects'),
         const SizedBox(height: 14),
         _buildSubjectsGrid(),
         const SizedBox(height: 24),
-
-        // Best Study Notes banner
         _buildStudyNotesBanner(),
         const SizedBox(height: 24),
-
-        // Continue Watching
         _SectionTitle(title: 'Continue Watching'),
         const SizedBox(height: 14),
         _buildContinueWatching(),
@@ -170,6 +161,15 @@ class _Home1PageState extends State<Home1Page> {
           cardLight: cardLight,
           cardMid: cardMid,
           purpleDark: purpleDark,
+          // ✅ Navigation added here
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChapterPage(subjectName: subject['name']),
+              ),
+            );
+          },
         );
       },
     );
@@ -190,7 +190,6 @@ class _Home1PageState extends State<Home1Page> {
       padding: const EdgeInsets.fromLTRB(20, 20, 10, 20),
       child: Row(
         children: [
-          // Text + button
           Expanded(
             flex: 3,
             child: Column(
@@ -236,8 +235,6 @@ class _Home1PageState extends State<Home1Page> {
               ],
             ),
           ),
-
-          // Illustration
           Expanded(
             flex: 2,
             child: _BannerIllustration(),
@@ -286,11 +283,11 @@ class _Home1PageState extends State<Home1Page> {
   // ── Bottom Navigation ──────────────────────────────────────────────────────
   Widget _buildBottomNav() {
     final items = [
-      {'icon': Icons.home_rounded,         'label': 'Home'},
-      {'icon': Icons.search_rounded,       'label': 'Search'},
-      {'icon': Icons.access_time_rounded,  'label': 'History'},
-      {'icon': Icons.person_rounded,       'label': 'Profile'},
-      {'icon': Icons.settings_rounded,     'label': 'Settings'},
+      {'icon': Icons.home_rounded,        'label': 'Home'},
+      {'icon': Icons.search_rounded,      'label': 'Search'},
+      {'icon': Icons.access_time_rounded, 'label': 'History'},
+      {'icon': Icons.person_rounded,      'label': 'Profile'},
+      {'icon': Icons.settings_rounded,    'label': 'Settings'},
     ];
 
     return Container(
@@ -354,7 +351,11 @@ class _ToggleButton extends StatelessWidget {
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(26),
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6, offset: const Offset(0, 2))]
+              ? [BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )]
               : [],
         ),
         child: Text(
@@ -406,12 +407,13 @@ class _SectionTitle extends StatelessWidget {
 }
 
 // =============================================================================
-// SUBJECT CARD
+// SUBJECT CARD — now accepts onTap callback
 // =============================================================================
 class _SubjectCard extends StatelessWidget {
   final String name;
   final IconData icon;
   final Color cardLight, cardMid, purpleDark;
+  final VoidCallback onTap; // ✅ Added onTap parameter
 
   const _SubjectCard({
     required this.name,
@@ -419,12 +421,13 @@ class _SubjectCard extends StatelessWidget {
     required this.cardLight,
     required this.cardMid,
     required this.purpleDark,
+    required this.onTap, // ✅ Required
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {},
+      onTap: onTap, // ✅ Uses passed onTap
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -463,7 +466,7 @@ class _SubjectCard extends StatelessWidget {
 }
 
 // =============================================================================
-// BANNER ILLUSTRATION (Flutter-drawn)
+// BANNER ILLUSTRATION
 // =============================================================================
 class _BannerIllustration extends StatelessWidget {
   @override
@@ -473,7 +476,6 @@ class _BannerIllustration extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Person silhouette
           Positioned(
             right: 10,
             bottom: 0,
@@ -487,7 +489,6 @@ class _BannerIllustration extends StatelessWidget {
               child: const Icon(Icons.person_rounded, color: Colors.white70, size: 50),
             ),
           ),
-          // Floating icons
           Positioned(
             left: 0,
             top: 10,
@@ -510,7 +511,7 @@ class _BannerIllustration extends StatelessWidget {
 }
 
 // =============================================================================
-// VIDEO CARD (Continue Watching)
+// VIDEO CARD
 // =============================================================================
 class _VideoCard extends StatelessWidget {
   @override
@@ -531,7 +532,6 @@ class _VideoCard extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Thumbnail placeholder
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Container(
@@ -539,7 +539,6 @@ class _VideoCard extends StatelessWidget {
               child: const Icon(Icons.play_lesson_rounded, size: 40, color: Colors.white54),
             ),
           ),
-          // Play button
           Container(
             width: 36,
             height: 36,
