@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'topic_detail_page.dart';
+import 'search_page.dart';
 
 // ✅ FIX: Use a typed class instead of Map<String,dynamic> — no more Color cast errors
 class _TopicData {
@@ -325,7 +326,16 @@ class _TopicMapPageState extends State<TopicMapPage>
         children: List.generate(items.length, (i) {
           final bool active = _bottomNavIndex == i;
           return GestureDetector(
-            onTap: () => setState(() => _bottomNavIndex = i),
+             onTap: () {
+              if (i == 1) {                                // ✅ fixed: was 'index'
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                );
+              } else {
+                setState(() => _bottomNavIndex = i);       // ✅ fixed: was 'index'
+              }
+            },
             child: Icon(items[i],
                 size: 26,
                 color:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'search_page.dart';
 
 class TopicDetailPage extends StatefulWidget {
   final String topicTitle;
@@ -22,7 +23,6 @@ class _TopicDetailPageState extends State<TopicDetailPage> {
   static const Color purplePale  = Color(0xFFEDD6F7);
   static const Color bgColor     = Color(0xFFF9F7FC);
 
-  // ✅ Khan Academy - embeddable educational video
   static const String _videoId = 'NybHckSEQBI';
 
   @override
@@ -488,10 +488,19 @@ class _TopicDetailPageState extends State<TopicDetailPage> {
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(items.length, (i) {
+        children: List.generate(items.length, (i) {       // ✅ loop var is 'i'
           final bool active = _bottomNavIndex == i;
           return GestureDetector(
-            onTap: () => setState(() => _bottomNavIndex = i),
+            onTap: () {
+              if (i == 1) {                                // ✅ fixed: was 'index'
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                );
+              } else {
+                setState(() => _bottomNavIndex = i);       // ✅ fixed: was 'index'
+              }
+            },
             child: Icon(items[i],
                 size: 26,
                 color: active ? purpleDark : const Color(0xFFBBBBBB)),

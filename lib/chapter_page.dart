@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'topic_map_page.dart';
+import 'search_page.dart';
 
 class ChapterPage extends StatefulWidget {
   final String subjectName;
@@ -229,7 +230,16 @@ class _ChapterPageState extends State<ChapterPage> {
         children: List.generate(items.length, (index) {
           final bool isActive = _bottomNavIndex == index;
           return GestureDetector(
-            onTap: () => setState(() => _bottomNavIndex = index),
+                        onTap: () {
+              if (index == 1) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                );
+              } else {
+                setState(() => _bottomNavIndex = index);
+              }
+            },
             child: Icon(
               items[index],
               size: 26,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'chapter_page.dart';
+import 'search_page.dart';
+import 'history_page.dart';
+import 'profile_page.dart';
 
 class Home1Page extends StatefulWidget {
   const Home1Page({super.key});
@@ -9,7 +12,6 @@ class Home1Page extends StatefulWidget {
 }
 
 class _Home1PageState extends State<Home1Page> {
-  // Toggle: 0 = Study, 1 = Language
   int _toggleIndex = 0;
   int _bottomNavIndex = 0;
 
@@ -39,7 +41,6 @@ class _Home1PageState extends State<Home1Page> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Scrollable body ───────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -56,8 +57,6 @@ class _Home1PageState extends State<Home1Page> {
                 ),
               ),
             ),
-
-            // ── Bottom navigation ─────────────────────────────────────────
             _buildBottomNav(),
           ],
         ),
@@ -161,7 +160,6 @@ class _Home1PageState extends State<Home1Page> {
           cardLight: cardLight,
           cardMid: cardMid,
           purpleDark: purpleDark,
-          // ✅ Navigation added here
           onTap: () {
             Navigator.push(
               context,
@@ -207,11 +205,7 @@ class _Home1PageState extends State<Home1Page> {
                 const SizedBox(height: 6),
                 const Text(
                   'Get best study notes\nfor every subject !',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white70,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.white70, height: 1.4),
                 ),
                 const SizedBox(height: 16),
                 GestureDetector(
@@ -235,10 +229,7 @@ class _Home1PageState extends State<Home1Page> {
               ],
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: _BannerIllustration(),
-          ),
+          Expanded(flex: 2, child: _BannerIllustration()),
         ],
       ),
     );
@@ -307,13 +298,35 @@ class _Home1PageState extends State<Home1Page> {
         children: List.generate(items.length, (index) {
           final bool isActive = _bottomNavIndex == index;
           return GestureDetector(
-            onTap: () => setState(() => _bottomNavIndex = index),
+            onTap: () {
+              if (index == 1) {
+                // ✅ Search
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                );
+              } else if (index == 2) {
+                // ✅ History
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HistoryPage()),
+                );
+              } else if (index == 3) {
+                // ✅ Profile
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfilePage()),
+                );
+              } else {
+                setState(() => _bottomNavIndex = index);
+              }
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               child: Icon(
                 items[index]['icon'] as IconData,
                 size: 26,
-                color: isActive ? const Color(0xFF5B1F7A) : const Color(0xFFBBBBBB),
+                color: isActive ? purpleDark : const Color(0xFFBBBBBB),
               ),
             ),
           );
@@ -407,13 +420,13 @@ class _SectionTitle extends StatelessWidget {
 }
 
 // =============================================================================
-// SUBJECT CARD — now accepts onTap callback
+// SUBJECT CARD
 // =============================================================================
 class _SubjectCard extends StatelessWidget {
   final String name;
   final IconData icon;
   final Color cardLight, cardMid, purpleDark;
-  final VoidCallback onTap; // ✅ Added onTap parameter
+  final VoidCallback onTap;
 
   const _SubjectCard({
     required this.name,
@@ -421,13 +434,13 @@ class _SubjectCard extends StatelessWidget {
     required this.cardLight,
     required this.cardMid,
     required this.purpleDark,
-    required this.onTap, // ✅ Required
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap, // ✅ Uses passed onTap
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -477,11 +490,9 @@ class _BannerIllustration extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Positioned(
-            right: 10,
-            bottom: 0,
+            right: 10, bottom: 0,
             child: Container(
-              width: 55,
-              height: 100,
+              width: 55, height: 100,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(30),
@@ -489,21 +500,12 @@ class _BannerIllustration extends StatelessWidget {
               child: const Icon(Icons.person_rounded, color: Colors.white70, size: 50),
             ),
           ),
-          Positioned(
-            left: 0,
-            top: 10,
-            child: Icon(Icons.lightbulb_rounded, color: Colors.white.withOpacity(0.6), size: 20),
-          ),
-          Positioned(
-            left: 20,
-            top: 40,
-            child: Icon(Icons.hourglass_bottom_rounded, color: Colors.white.withOpacity(0.5), size: 18),
-          ),
-          Positioned(
-            left: 5,
-            bottom: 20,
-            child: Icon(Icons.sticky_note_2_rounded, color: Colors.white.withOpacity(0.5), size: 18),
-          ),
+          Positioned(left: 0, top: 10,
+              child: Icon(Icons.lightbulb_rounded, color: Colors.white.withOpacity(0.6), size: 20)),
+          Positioned(left: 20, top: 40,
+              child: Icon(Icons.hourglass_bottom_rounded, color: Colors.white.withOpacity(0.5), size: 18)),
+          Positioned(left: 5, bottom: 20,
+              child: Icon(Icons.sticky_note_2_rounded, color: Colors.white.withOpacity(0.5), size: 18)),
         ],
       ),
     );
@@ -540,8 +542,7 @@ class _VideoCard extends StatelessWidget {
             ),
           ),
           Container(
-            width: 36,
-            height: 36,
+            width: 36, height: 36,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.85),
               shape: BoxShape.circle,
