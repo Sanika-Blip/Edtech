@@ -1,176 +1,118 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'topic_map_page.dart';
+import 'language_topic_map_page.dart';
 import 'search_page.dart';
 import 'history_page.dart';
 import 'profile_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared pastel palette (mirrors home1_page.dart)
+// GREEN PASTEL PALETTE  (language theme)
 // ─────────────────────────────────────────────────────────────────────────────
-class _C {
-  static const bg       = Color(0xFFF7F4FB);
-  static const inkDark  = Color(0xFF3D3660);
-  static const inkMid   = Color(0xFF6B6490);
-  static const inkLight = Color(0xFF9E9BBF);
-  static const lavDark  = Color(0xFFB8A6D9);
-  static const lavMid   = Color(0xFFC9B8E8);
-  static const lavLight = Color(0xFFEAE3F7);
-  static const mintA    = Color(0xFFB8E4D8);
-  static const mintB    = Color(0xFF9DD4C5);
-  static const blushA   = Color(0xFFF2C4CE);
-  static const blushB   = Color(0xFFE8A8B5);
-  static const peachA   = Color(0xFFF9D9B8);
-  static const peachB   = Color(0xFFF0C49A);
-  static const skyA     = Color(0xFFB8D8F2);
-  static const skyB     = Color(0xFF9DC8EA);
-  static const lemonA   = Color(0xFFF2EDB8);
-  static const lemonB   = Color(0xFFE8E09A);
-  static const lilacA   = Color(0xFFD8B8F2);
-  static const lilacB   = Color(0xFFC8A0E8);
-  static const sagA     = Color(0xFFC8DFC4);
-  static const sagB     = Color(0xFFB0CCA8);
-  static const powderA  = Color(0xFFC4D8F0);
-  static const powderB  = Color(0xFFACC4E4);
-  static const roseA    = Color(0xFFF5C6D0);
-  static const roseB    = Color(0xFFEAADB8);
+class _G {
+  static const bg        = Color(0xFFF2FAF6);   // near-white mint bg
+  static const inkDark   = Color(0xFF2D6B4F);   // deep forest green
+  static const inkMid    = Color(0xFF4E9070);   // mid sage
+  static const inkLight  = Color(0xFF88BBA0);   // soft sage
+
+  static const gDark     = Color(0xFF4A8C6F);
+  static const gMid      = Color(0xFF72B89A);
+  static const gLight    = Color(0xFFB8E4D0);
+  static const gPale     = Color(0xFFE4F5EE);
+
+  // Per-language card accent shades
+  static const korA      = Color(0xFFB8E4D0);
+  static const korB      = Color(0xFF9DD4B8);
+  static const jpA       = Color(0xFFC8ECD8);
+  static const jpB       = Color(0xFFADD8C0);
+  static const deA       = Color(0xFFD8F0E4);
+  static const deB       = Color(0xFFBCDDD0);
 }
 
-// Per-subject: header gradient pair + card accent pair + emoji
-const _subjectMeta = <String, Map<String, dynamic>>{
-  'Maths':     {'h1': _C.lavMid,   'h2': _C.lavDark,  'c1': _C.lavLight,  'c2': _C.lavMid,   'emoji': '🔢'},
-  'Science':   {'h1': _C.mintA,    'h2': _C.mintB,    'c1': _C.mintA,     'c2': _C.mintB,    'emoji': '🧪'},
-  'English':   {'h1': _C.blushA,   'h2': _C.blushB,   'c1': _C.blushA,    'c2': _C.blushB,   'emoji': '📖'},
-  'History':   {'h1': _C.skyA,     'h2': _C.skyB,     'c1': _C.skyA,      'c2': _C.skyB,     'emoji': '🏛️'},
-  'Geography': {'h1': _C.peachA,   'h2': _C.peachB,   'c1': _C.peachA,    'c2': _C.peachB,   'emoji': '🌍'},
-  'Physics':   {'h1': _C.lemonA,   'h2': _C.lemonB,   'c1': _C.lemonA,    'c2': _C.lemonB,   'emoji': '⚡'},
-  'Chemistry': {'h1': _C.lilacA,   'h2': _C.lilacB,   'c1': _C.lilacA,    'c2': _C.lilacB,   'emoji': '🧬'},
-  'Biology':   {'h1': _C.sagA,     'h2': _C.sagB,     'c1': _C.sagA,      'c2': _C.sagB,     'emoji': '🌿'},
-  'Computer':  {'h1': _C.powderA,  'h2': _C.powderB,  'c1': _C.powderA,   'c2': _C.powderB,  'emoji': '💻'},
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-language meta  (header gradient + card accent + emoji)
+// ─────────────────────────────────────────────────────────────────────────────
+const _langMeta = <String, Map<String, dynamic>>{
+  'Korean':   {'h1': _G.korA, 'h2': _G.korB, 'c1': _G.korA, 'c2': _G.korB, 'emoji': '🇰🇷'},
+  'Japanese': {'h1': _G.jpA,  'h2': _G.jpB,  'c1': _G.jpA,  'c2': _G.jpB,  'emoji': '🇯🇵'},
+  'German':   {'h1': _G.deA,  'h2': _G.deB,  'c1': _G.deA,  'c2': _G.deB,  'emoji': '🇩🇪'},
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CHAPTER PAGE
+// LANGUAGE CHAPTER PAGE
 // ─────────────────────────────────────────────────────────────────────────────
-class ChapterPage extends StatefulWidget {
-  final String subjectName;
-  const ChapterPage({super.key, required this.subjectName});
+class LanguageChapterPage extends StatefulWidget {
+  final String languageName;
+  const LanguageChapterPage({super.key, required this.languageName});
 
   @override
-  State<ChapterPage> createState() => _ChapterPageState();
+  State<LanguageChapterPage> createState() => _LanguageChapterPageState();
 }
 
-class _ChapterPageState extends State<ChapterPage>
+class _LanguageChapterPageState extends State<LanguageChapterPage>
     with TickerProviderStateMixin {
   int _bottomNavIndex = 0;
 
-  // Animation controllers
-  late AnimationController _headerCtrl;   // header fade + slide
-  late AnimationController _floatCtrl;    // floating particles
-  late AnimationController _listCtrl;     // staggered card entrance
-  late AnimationController _pulseCtrl;    // play-button pulse
+  late AnimationController _headerCtrl;
+  late AnimationController _floatCtrl;
+  late AnimationController _listCtrl;
+  late AnimationController _pulseCtrl;
 
   late Animation<double> _headerFade;
   late Animation<Offset> _headerSlide;
   late Animation<double> _pulseAnim;
 
-  // Subject data
-  final Map<String, List<Map<String, String>>> _subjectChapters = {
-    'Maths': [
-      {'title': 'Chapter 1: Basic Numbers',       'subtitle': 'Integers, fractions & decimals'},
-      {'title': 'Chapter 2: Algebra Basics',      'subtitle': 'Variables, expressions & equations'},
-      {'title': 'Chapter 3: Geometry',            'subtitle': 'Shapes, angles & theorems'},
-      {'title': 'Chapter 4: Trigonometry',        'subtitle': 'Sin, cos, tan & identities'},
-      {'title': 'Chapter 5: Statistics',          'subtitle': 'Mean, median, mode & graphs'},
+  // ── Chapter data per language ───────────────────────────────────────────────
+  final _langChapters = <String, List<Map<String, String>>>{
+    'Korean': [
+      {'title': 'Chapter 1: Hangul Basics',      'subtitle': 'Vowels, consonants & syllables'},
+      {'title': 'Chapter 2: Greetings',           'subtitle': 'Hello, goodbye & politeness levels'},
+      {'title': 'Chapter 3: Numbers & Time',      'subtitle': 'Native & Sino-Korean numbers'},
+      {'title': 'Chapter 4: Daily Expressions',   'subtitle': 'Food, shopping & transport'},
+      {'title': 'Chapter 5: Grammar Foundations', 'subtitle': 'Particles, tense & sentence order'},
     ],
-    'Science': [
-      {'title': 'Chapter 1: Matter & Materials',  'subtitle': 'States of matter & properties'},
-      {'title': 'Chapter 2: Forces & Motion',     'subtitle': "Newton's laws & energy"},
-      {'title': 'Chapter 3: Light & Sound',       'subtitle': 'Waves, reflection & refraction'},
-      {'title': 'Chapter 4: Living World',        'subtitle': 'Cell structure & life processes'},
-      {'title': 'Chapter 5: Environment',         'subtitle': 'Ecosystem & conservation'},
+    'Japanese': [
+      {'title': 'Chapter 1: Hiragana & Katakana', 'subtitle': 'The two phonetic scripts'},
+      {'title': 'Chapter 2: Basic Kanji',         'subtitle': 'Top 50 everyday kanji'},
+      {'title': 'Chapter 3: Greetings & Phrases', 'subtitle': 'Formal & casual expressions'},
+      {'title': 'Chapter 4: Verb Conjugation',    'subtitle': 'る-verbs, う-verbs & て-form'},
+      {'title': 'Chapter 5: Reading Practice',    'subtitle': 'Short passages & comprehension'},
     ],
-    'English': [
-      {'title': 'Chapter 1: Grammar Basics',      'subtitle': 'Nouns, verbs & adjectives'},
-      {'title': 'Chapter 2: Reading Skills',      'subtitle': 'Comprehension & inference'},
-      {'title': 'Chapter 3: Writing Skills',      'subtitle': 'Essays, letters & reports'},
-      {'title': 'Chapter 4: Literature',          'subtitle': 'Prose, poetry & drama'},
-      {'title': 'Chapter 5: Vocabulary',          'subtitle': 'Word formation & synonyms'},
-    ],
-    'History': [
-      {'title': 'Chapter 1: Ancient Civilizations','subtitle': 'Indus Valley & Mesopotamia'},
-      {'title': 'Chapter 2: Medieval Period',     'subtitle': 'Mughal empire & crusades'},
-      {'title': 'Chapter 3: Colonial Era',        'subtitle': 'British rule & independence'},
-      {'title': 'Chapter 4: World Wars',          'subtitle': 'WWI, WWII & consequences'},
-      {'title': 'Chapter 5: Modern India',        'subtitle': 'Post-independence developments'},
-    ],
-    'Geography': [
-      {'title': 'Chapter 1: Earth & Maps',        'subtitle': 'Latitude, longitude & projections'},
-      {'title': 'Chapter 2: Landforms',           'subtitle': 'Mountains, plains & plateaus'},
-      {'title': 'Chapter 3: Climate',             'subtitle': 'Weather patterns & seasons'},
-      {'title': 'Chapter 4: Resources',           'subtitle': 'Natural resources & distribution'},
-      {'title': 'Chapter 5: Population',          'subtitle': 'Demographics & urbanisation'},
-    ],
-    'Physics': [
-      {'title': 'Chapter 1: Mechanics',           'subtitle': 'Motion, force & work'},
-      {'title': 'Chapter 2: Thermodynamics',      'subtitle': 'Heat, temperature & laws'},
-      {'title': 'Chapter 3: Electrostatics',      'subtitle': 'Charge, field & potential'},
-      {'title': 'Chapter 4: Optics',              'subtitle': 'Lenses, mirrors & light'},
-      {'title': 'Chapter 5: Modern Physics',      'subtitle': 'Atoms, nuclei & radiation'},
-    ],
-    'Chemistry': [
-      {'title': 'Chapter 1: Atomic Structure',    'subtitle': 'Protons, electrons & orbitals'},
-      {'title': 'Chapter 2: Periodic Table',      'subtitle': 'Elements, groups & periods'},
-      {'title': 'Chapter 3: Chemical Bonding',    'subtitle': 'Ionic, covalent & metallic'},
-      {'title': 'Chapter 4: Reactions',           'subtitle': 'Acids, bases & redox'},
-      {'title': 'Chapter 5: Organic Chemistry',   'subtitle': 'Hydrocarbons & functional groups'},
-    ],
-    'Biology': [
-      {'title': 'Chapter 1: Cell Biology',        'subtitle': 'Cell structure & organelles'},
-      {'title': 'Chapter 2: Genetics',            'subtitle': 'DNA, genes & heredity'},
-      {'title': 'Chapter 3: Human Body',          'subtitle': 'Organ systems & functions'},
-      {'title': 'Chapter 4: Plant Kingdom',       'subtitle': 'Photosynthesis & reproduction'},
-      {'title': 'Chapter 5: Ecology',             'subtitle': 'Food chains & biodiversity'},
-    ],
-    'Computer': [
-      {'title': 'Chapter 1: Basics of Computing', 'subtitle': 'Hardware, software & OS'},
-      {'title': 'Chapter 2: Programming',         'subtitle': 'Algorithms & flowcharts'},
-      {'title': 'Chapter 3: Internet & Web',      'subtitle': 'Networking & web basics'},
-      {'title': 'Chapter 4: Database',            'subtitle': 'SQL, tables & queries'},
-      {'title': 'Chapter 5: Cyber Security',      'subtitle': 'Threats, safety & ethics'},
+    'German': [
+      {'title': 'Chapter 1: Alphabet & Sounds',   'subtitle': 'Umlauts, ß & pronunciation'},
+      {'title': 'Chapter 2: Articles & Nouns',    'subtitle': 'Der, die, das & plural rules'},
+      {'title': 'Chapter 3: Present Tense',       'subtitle': 'Regular & irregular verbs'},
+      {'title': 'Chapter 4: Cases',               'subtitle': 'Nominative, accusative & dative'},
+      {'title': 'Chapter 5: Everyday Vocabulary', 'subtitle': 'Numbers, colours & directions'},
     ],
   };
 
   List<Map<String, String>> get _chapters =>
-      _subjectChapters[widget.subjectName] ?? _subjectChapters['Maths']!;
+      _langChapters[widget.languageName] ?? _langChapters['Korean']!;
 
   Map<String, dynamic> get _meta =>
-      _subjectMeta[widget.subjectName] ?? _subjectMeta['Maths']!;
+      _langMeta[widget.languageName] ?? _langMeta['Korean']!;
 
   @override
   void initState() {
     super.initState();
 
-    // Header entrance
     _headerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 650))
       ..forward();
     _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
     _headerSlide = Tween<Offset>(
             begin: const Offset(0, -0.25), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
+        .animate(CurvedAnimation(
+            parent: _headerCtrl, curve: Curves.easeOutCubic));
 
-    // Floating particles
     _floatCtrl = AnimationController(
         vsync: this, duration: const Duration(seconds: 3))
       ..repeat(reverse: true);
 
-    // Staggered card list entrance
     _listCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 900))
       ..forward();
 
-    // Pulse for play button
     _pulseCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 900))
       ..repeat(reverse: true);
@@ -187,18 +129,18 @@ class _ChapterPageState extends State<ChapterPage>
     super.dispose();
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
+  // ── Build ───────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final Color h1 = _meta['h1'] as Color;
     final Color h2 = _meta['h2'] as Color;
 
     return Scaffold(
-      backgroundColor: _C.bg,
+      backgroundColor: _G.bg,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Animated header bar ──────────────────────────────────
+            // Animated header bar
             FadeTransition(
               opacity: _headerFade,
               child: SlideTransition(
@@ -206,26 +148,22 @@ class _ChapterPageState extends State<ChapterPage>
                 child: _buildHeader(h1, h2),
               ),
             ),
-
-            // ── Content ──────────────────────────────────────────────
+            // Content
             Expanded(
               child: Stack(
                 children: [
-                  // Background blobs
                   _buildBgBlobs(h1, h2),
-                  // Floating particles
                   ..._buildParticles(),
-                  // Chapter cards
                   ListView.builder(
                     padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
                     itemCount: _chapters.length,
                     itemBuilder: (ctx, i) {
-                      // Staggered slide-up per card
                       final start = i * 0.15;
                       final end   = (start + 0.55).clamp(0.0, 1.0);
                       final anim  = CurvedAnimation(
                         parent: _listCtrl,
-                        curve: Interval(start, end, curve: Curves.easeOutCubic),
+                        curve: Interval(start, end,
+                            curve: Curves.easeOutCubic),
                       );
                       return AnimatedBuilder(
                         animation: anim,
@@ -239,7 +177,7 @@ class _ChapterPageState extends State<ChapterPage>
                             child: child,
                           ),
                         ),
-                        child: _ChapterCard(
+                        child: _LangChapterCard(
                           chapterTitle: _chapters[i]['title']!,
                           subtitle:     _chapters[i]['subtitle']!,
                           index:        i,
@@ -248,7 +186,7 @@ class _ChapterPageState extends State<ChapterPage>
                           headerA:      h1,
                           headerB:      h2,
                           pulseAnim:    _pulseAnim,
-                          subjectEmoji: _meta['emoji'] as String,
+                          langEmoji:    _meta['emoji'] as String,
                         ),
                       );
                     },
@@ -256,8 +194,6 @@ class _ChapterPageState extends State<ChapterPage>
                 ],
               ),
             ),
-
-            // ── Bottom nav ────────────────────────────────────────────
             _buildBottomNav(),
           ],
         ),
@@ -265,7 +201,7 @@ class _ChapterPageState extends State<ChapterPage>
     );
   }
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // ── Header ──────────────────────────────────────────────────────────────────
   Widget _buildHeader(Color h1, Color h2) {
     return Container(
       decoration: BoxDecoration(
@@ -288,7 +224,7 @@ class _ChapterPageState extends State<ChapterPage>
       ),
       child: Stack(
         children: [
-          // Decorative blobs inside header
+          // Decorative blobs
           Positioned(
             top: -18, right: -18,
             child: Container(
@@ -324,14 +260,12 @@ class _ChapterPageState extends State<ChapterPage>
             padding: const EdgeInsets.fromLTRB(6, 8, 16, 16),
             child: Row(
               children: [
-                // Back button
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: _C.inkDark, size: 20),
+                      color: _G.inkDark, size: 20),
                   onPressed: () => Navigator.maybePop(context),
                 ),
                 const SizedBox(width: 4),
-                // Subject emoji + name
                 Text(
                   _meta['emoji'] as String,
                   style: const TextStyle(fontSize: 26),
@@ -342,11 +276,11 @@ class _ChapterPageState extends State<ChapterPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.subjectName,
+                        widget.languageName,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
-                          color: _C.inkDark,
+                          color: _G.inkDark,
                           letterSpacing: 0.2,
                         ),
                       ),
@@ -355,7 +289,7 @@ class _ChapterPageState extends State<ChapterPage>
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _C.inkMid,
+                          color: _G.inkMid,
                         ),
                       ),
                     ],
@@ -373,14 +307,14 @@ class _ChapterPageState extends State<ChapterPage>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.menu_book_rounded,
-                          size: 14, color: _C.inkDark),
+                          size: 14, color: _G.inkDark),
                       const SizedBox(width: 4),
                       Text(
                         '${_chapters.length}',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
-                          color: _C.inkDark,
+                          color: _G.inkDark,
                         ),
                       ),
                     ],
@@ -394,7 +328,7 @@ class _ChapterPageState extends State<ChapterPage>
     );
   }
 
-  // ── Background blobs ───────────────────────────────────────────────────────
+  // ── Background blobs ────────────────────────────────────────────────────────
   Widget _buildBgBlobs(Color h1, Color h2) {
     return IgnorePointer(
       child: Stack(children: [
@@ -414,7 +348,7 @@ class _ChapterPageState extends State<ChapterPage>
             width: 140, height: 140,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _C.mintA.withOpacity(0.3),
+              color: _G.gLight.withOpacity(0.35),
             ),
           ),
         ),
@@ -424,7 +358,7 @@ class _ChapterPageState extends State<ChapterPage>
             width: 130, height: 130,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _C.blushA.withOpacity(0.25),
+              color: _G.gMid.withOpacity(0.2),
             ),
           ),
         ),
@@ -432,14 +366,14 @@ class _ChapterPageState extends State<ChapterPage>
     );
   }
 
-  // ── Floating particles ─────────────────────────────────────────────────────
+  // ── Floating particles ──────────────────────────────────────────────────────
   List<Widget> _buildParticles() {
     final items = [
-      {'e': '✨', 'lf': 0.07, 'tf': 0.05, 'ph': 0.0},
-      {'e': '📝', 'lf': 0.82, 'tf': 0.10, 'ph': 0.6},
-      {'e': '🌟', 'lf': 0.88, 'tf': 0.35, 'ph': 1.1},
-      {'e': '💫', 'lf': 0.04, 'tf': 0.52, 'ph': 0.4},
-      {'e': '🎀', 'lf': 0.80, 'tf': 0.65, 'ph': 0.9},
+      {'e': '🌿', 'lf': 0.07, 'tf': 0.05, 'ph': 0.0},
+      {'e': '✨', 'lf': 0.82, 'tf': 0.10, 'ph': 0.6},
+      {'e': '🍃', 'lf': 0.88, 'tf': 0.35, 'ph': 1.1},
+      {'e': '💬', 'lf': 0.04, 'tf': 0.52, 'ph': 0.4},
+      {'e': '🌱', 'lf': 0.80, 'tf': 0.65, 'ph': 0.9},
     ];
     return items.map((item) {
       return AnimatedBuilder(
@@ -450,7 +384,7 @@ class _ChapterPageState extends State<ChapterPage>
           final dy = math.sin(t * math.pi) * 9.0;
           return Positioned(
             left: sw  * (item['lf'] as double),
-            top: 620  * (item['tf'] as double) + dy,
+            top:  620 * (item['tf'] as double) + dy,
             child: IgnorePointer(
               child: Opacity(
                 opacity: 0.4,
@@ -464,7 +398,7 @@ class _ChapterPageState extends State<ChapterPage>
     }).toList();
   }
 
-  // ── Bottom navigation bar (identical style to home1_page) ─────────────────
+  // ── Bottom nav (green active pill) ─────────────────────────────────────────
   Widget _buildBottomNav() {
     final items = [
       {'icon': Icons.home_rounded,        'label': 'Home'},
@@ -479,7 +413,7 @@ class _ChapterPageState extends State<ChapterPage>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: _C.lavMid.withOpacity(0.2),
+            color: _G.gMid.withOpacity(0.2),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -493,38 +427,25 @@ class _ChapterPageState extends State<ChapterPage>
           return GestureDetector(
             onTap: () {
               if (index == 1) {
-                // ── Search ──────────────────────────────────────────
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const SearchPage()),
-                );
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const SearchPage()));
               } else if (index == 2) {
-                // ── History ─────────────────────────────────────────
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const HistoryPage()),
-                );
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const HistoryPage()));
               } else if (index == 3) {
-                // ── Profile ─────────────────────────────────────────
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const ProfilePage()),
-                );
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const ProfilePage()));
               } else {
-                // ── Home (0) / Settings (4) ──────────────────────────
                 setState(() => _bottomNavIndex = index);
               }
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutBack,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isActive ? _C.lavLight : Colors.transparent,
+                // Green active pill instead of lavender
+                color: isActive ? _G.gLight : Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
@@ -537,7 +458,7 @@ class _ChapterPageState extends State<ChapterPage>
                     child: Icon(
                       items[index]['icon'] as IconData,
                       size: 24,
-                      color: isActive ? _C.inkDark : _C.inkLight,
+                      color: isActive ? _G.inkDark : _G.inkLight,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -546,7 +467,7 @@ class _ChapterPageState extends State<ChapterPage>
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      color: isActive ? _C.inkDark : _C.inkLight,
+                      color: isActive ? _G.inkDark : _G.inkLight,
                     ),
                   ),
                 ],
@@ -560,18 +481,18 @@ class _ChapterPageState extends State<ChapterPage>
 }
 
 // =============================================================================
-// CHAPTER CARD
+// LANGUAGE CHAPTER CARD
 // =============================================================================
-class _ChapterCard extends StatefulWidget {
+class _LangChapterCard extends StatefulWidget {
   final String chapterTitle;
   final String subtitle;
   final int    index;
-  final Color  colorA, colorB;   // card accent gradient
-  final Color  headerA, headerB; // thumbnail gradient
+  final Color  colorA, colorB;
+  final Color  headerA, headerB;
   final Animation<double> pulseAnim;
-  final String subjectEmoji;
+  final String langEmoji;
 
-  const _ChapterCard({
+  const _LangChapterCard({
     required this.chapterTitle,
     required this.subtitle,
     required this.index,
@@ -580,14 +501,14 @@ class _ChapterCard extends StatefulWidget {
     required this.headerA,
     required this.headerB,
     required this.pulseAnim,
-    required this.subjectEmoji,
+    required this.langEmoji,
   });
 
   @override
-  State<_ChapterCard> createState() => _ChapterCardState();
+  State<_LangChapterCard> createState() => _LangChapterCardState();
 }
 
-class _ChapterCardState extends State<_ChapterCard> {
+class _LangChapterCardState extends State<_LangChapterCard> {
   bool _pressed = false;
 
   @override
@@ -616,9 +537,7 @@ class _ChapterCardState extends State<_ChapterCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Thumbnail ───────────────────────────────────────────
             _buildThumbnail(),
-            // ── Info + Start button ─────────────────────────────────
             _buildFooter(context),
           ],
         ),
@@ -626,7 +545,7 @@ class _ChapterCardState extends State<_ChapterCard> {
     );
   }
 
-  // ── Thumbnail ──────────────────────────────────────────────────────────────
+  // ── Thumbnail ───────────────────────────────────────────────────────────────
   Widget _buildThumbnail() {
     return ClipRRect(
       borderRadius: const BorderRadius.only(
@@ -696,7 +615,7 @@ class _ChapterCardState extends State<_ChapterCard> {
                 child: Text(
                   'Ch. ${widget.index + 1}',
                   style: const TextStyle(
-                    color: _C.inkDark,
+                    color: _G.inkDark,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                   ),
@@ -704,7 +623,7 @@ class _ChapterCardState extends State<_ChapterCard> {
               ),
             ),
 
-            // Subject emoji (top-right)
+            // Language flag emoji (top-right)
             Positioned(
               top: 12, right: 12,
               child: Container(
@@ -714,7 +633,7 @@ class _ChapterCardState extends State<_ChapterCard> {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Text(widget.subjectEmoji,
+                  child: Text(widget.langEmoji,
                       style: const TextStyle(fontSize: 18)),
                 ),
               ),
@@ -743,7 +662,7 @@ class _ChapterCardState extends State<_ChapterCard> {
                   ),
                   child: const Icon(
                     Icons.play_arrow_rounded,
-                    color: _C.inkDark,
+                    color: _G.inkDark,
                     size: 30,
                   ),
                 ),
@@ -772,14 +691,14 @@ class _ChapterCardState extends State<_ChapterCard> {
     );
   }
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
+  // ── Footer: title + Start button ────────────────────────────────────────────
   Widget _buildFooter(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 13, 16, 15),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Left: accent bar + text
+          // Accent bar
           Container(
             width: 4, height: 38,
             margin: const EdgeInsets.only(right: 12),
@@ -801,7 +720,7 @@ class _ChapterCardState extends State<_ChapterCard> {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: _C.inkDark,
+                    color: _G.inkDark,
                     height: 1.3,
                   ),
                 ),
@@ -810,7 +729,7 @@ class _ChapterCardState extends State<_ChapterCard> {
                   widget.subtitle,
                   style: const TextStyle(
                     fontSize: 11,
-                    color: _C.inkLight,
+                    color: _G.inkLight,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -820,14 +739,14 @@ class _ChapterCardState extends State<_ChapterCard> {
 
           const SizedBox(width: 10),
 
-          // Start button
-          _StartButton(
+          // Start button (green)
+          _GreenStartButton(
             colorA: widget.colorA,
             colorB: widget.colorB,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => TopicMapPage(
+                builder: (_) => LanguageTopicMapPage(
                     chapterTitle: widget.chapterTitle),
               ),
             ),
@@ -839,22 +758,22 @@ class _ChapterCardState extends State<_ChapterCard> {
 }
 
 // =============================================================================
-// START BUTTON  (animated press)
+// GREEN START BUTTON
 // =============================================================================
-class _StartButton extends StatefulWidget {
+class _GreenStartButton extends StatefulWidget {
   final Color colorA, colorB;
   final VoidCallback onTap;
-  const _StartButton({
+  const _GreenStartButton({
     required this.colorA,
     required this.colorB,
     required this.onTap,
   });
 
   @override
-  State<_StartButton> createState() => _StartButtonState();
+  State<_GreenStartButton> createState() => _GreenStartButtonState();
 }
 
-class _StartButtonState extends State<_StartButton>
+class _GreenStartButtonState extends State<_GreenStartButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scale;
@@ -911,12 +830,12 @@ class _StartButtonState extends State<_StartButton>
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: _C.inkDark,
+                  color: _G.inkDark,
                 ),
               ),
               SizedBox(width: 4),
               Icon(Icons.arrow_forward_ios_rounded,
-                  size: 11, color: _C.inkDark),
+                  size: 11, color: _G.inkDark),
             ],
           ),
         ),

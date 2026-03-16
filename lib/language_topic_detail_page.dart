@@ -6,51 +6,50 @@ import 'history_page.dart';
 import 'profile_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PASTEL PALETTE  (mirrors home1_page, chapter_page, topic_map_page)
+// GREEN PASTEL PALETTE
 // ─────────────────────────────────────────────────────────────────────────────
-class _P {
-  static const bg       = Color(0xFFF7F4FB);
-  static const inkDark  = Color(0xFF3D3660);
-  static const inkMid   = Color(0xFF6B6490);
-  static const inkLight = Color(0xFF9E9BBF);
-  static const lavDark  = Color(0xFFB8A6D9);
-  static const lavMid   = Color(0xFFC9B8E8);
-  static const lavLight = Color(0xFFEAE3F7);
-  static const mintA    = Color(0xFFB8E4D8);
-  static const mintB    = Color(0xFF9DD4C5);
-  static const blushA   = Color(0xFFF2C4CE);
-  static const blushB   = Color(0xFFE8A8B5);
-  static const peachA   = Color(0xFFF9D9B8);
-  static const peachB   = Color(0xFFF0C49A);
-  static const skyA     = Color(0xFFB8D8F2);
-  static const skyB     = Color(0xFF9DC8EA);
-  static const lemonA   = Color(0xFFF2EDB8);
-  static const lemonB   = Color(0xFFE8E09A);
-  static const lilacA   = Color(0xFFD8B8F2);
-  static const lilacB   = Color(0xFFC8A0E8);
-  static const sagA     = Color(0xFFC8DFC4);
-  static const sagB     = Color(0xFFB0CCA8);
-  static const white    = Colors.white;
+class _LV {
+  static const bg        = Color(0xFFF2FAF6);
+  static const inkDark   = Color(0xFF2D6B4F);
+  static const inkMid    = Color(0xFF4E9070);
+  static const inkLight  = Color(0xFF88BBA0);
+
+  static const gDark     = Color(0xFF4A8C6F);
+  static const gMid      = Color(0xFF72B89A);
+  static const gLight    = Color(0xFFB8E4D0);
+  static const gPale     = Color(0xFFE4F5EE);
+
+  static const node1A    = Color(0xFFB8E4D0);
+  static const node1B    = Color(0xFF9DD4B8);
+  static const node2A    = Color(0xFFC8ECD8);
+  static const node2B    = Color(0xFFADD8C0);
+  static const node3A    = Color(0xFF9DCFB4);
+  static const node3B    = Color(0xFF7BBFA0);
+
+  // Chip accent colours — green family
+  static const chip1     = Color(0xFFB8E4D0); // mint
+  static const chip2     = Color(0xFFC8ECD8); // sage
+  static const chip3     = Color(0xFFD8F0E4); // pale
+  static const chip4     = Color(0xFF9DD4B8); // medium mint
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VIDEO REGISTRY
-// Each topic title maps to a YouTube video ID.
-// Add more entries here as new videos are available.
-// Falls back to the default demo video if no entry found.
+// LANGUAGE VIDEO REGISTRY
+// Maps lesson/topic title → YouTube video ID.
+// Falls back to demo video if not found.
 // ─────────────────────────────────────────────────────────────────────────────
-class _VideoRegistry {
+class _LangVideoRegistry {
   static const String _fallback = 'NybHckSEQBI';
 
   static const Map<String, String> _map = {
-    // ── Maths ──────────────────────────────────────────────────────────────
-    'Topic 1': 'NybHckSEQBI',
-    'Topic 2': 'NybHckSEQBI',
-    'Topic 3': 'NybHckSEQBI',
-    'Topic 4': 'NybHckSEQBI',
-    // ── Add per-topic IDs here as you get them, e.g.:
-    // 'Chapter 1: Basic Numbers – Topic 1': 'YOUTUBE_ID_HERE',
-    // 'Chapter 2: Algebra Basics – Topic 1': 'YOUTUBE_ID_HERE',
+    // ── Korean ─────────────────────────────────────────────────────────────
+    'Lesson 1': 'NybHckSEQBI',
+    'Lesson 2': 'NybHckSEQBI',
+    'Lesson 3': 'NybHckSEQBI',
+    'Lesson 4': 'NybHckSEQBI',
+    // ── Add per-lesson IDs as you get them, e.g.:
+    // 'Chapter 1: Hangul Basics – Lesson 1': 'YOUTUBE_ID_HERE',
+    // 'Chapter 2: Greetings – Lesson 1':     'YOUTUBE_ID_HERE',
   };
 
   static String idFor(String topicTitle) =>
@@ -58,17 +57,18 @@ class _VideoRegistry {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TOPIC DETAIL PAGE
+// LANGUAGE TOPIC DETAIL PAGE
 // ─────────────────────────────────────────────────────────────────────────────
-class TopicDetailPage extends StatefulWidget {
+class LanguageTopicDetailPage extends StatefulWidget {
   final String topicTitle;
-  const TopicDetailPage({super.key, required this.topicTitle});
+  const LanguageTopicDetailPage({super.key, required this.topicTitle});
 
   @override
-  State<TopicDetailPage> createState() => _TopicDetailPageState();
+  State<LanguageTopicDetailPage> createState() =>
+      _LanguageTopicDetailPageState();
 }
 
-class _TopicDetailPageState extends State<TopicDetailPage>
+class _LanguageTopicDetailPageState extends State<LanguageTopicDetailPage>
     with TickerProviderStateMixin {
   int _bottomNavIndex = 0;
 
@@ -82,50 +82,46 @@ class _TopicDetailPageState extends State<TopicDetailPage>
 
   // Animation controllers
   late AnimationController _headerCtrl;
-  late AnimationController _contentCtrl;  // staggered sections
-  late AnimationController _floatCtrl;    // floating particles
-  late AnimationController _pulseCtrl;    // video badge pulse
+  late AnimationController _contentCtrl;
+  late AnimationController _floatCtrl;
+  late AnimationController _pulseCtrl;
 
   late Animation<double> _headerFade;
-  late Animation<Offset> _headerSlide;
+  late Animation<Offset>  _headerSlide;
   late Animation<double> _pulseAnim;
 
   @override
   void initState() {
     super.initState();
 
-    // Header entrance
     _headerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 650))
       ..forward();
     _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
     _headerSlide = Tween<Offset>(
             begin: const Offset(0, -0.3), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
+        .animate(CurvedAnimation(
+            parent: _headerCtrl, curve: Curves.easeOutCubic));
 
-    // Staggered content
     _contentCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000))
       ..forward();
 
-    // Ambient float
     _floatCtrl = AnimationController(
         vsync: this, duration: const Duration(seconds: 3))
       ..repeat(reverse: true);
 
-    // Video badge pulse
     _pulseCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 900))
       ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.95, end: 1.05)
-        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
+        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    // Init YouTube player after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(() {
         _ytController = YoutubePlayerController(
-          initialVideoId: _VideoRegistry.idFor(widget.topicTitle),
+          initialVideoId: _LangVideoRegistry.idFor(widget.topicTitle),
           flags: const YoutubePlayerFlags(
             autoPlay: false,
             mute: false,
@@ -149,32 +145,32 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     super.dispose();
   }
 
-  // ── Staggered section animation helper ────────────────────────────────────
   Animation<double> _sectionAnim(double start, double end) =>
       CurvedAnimation(
         parent: _contentCtrl,
         curve: Interval(start, end, curve: Curves.easeOutCubic),
       );
 
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     // Loading state
     if (_ytController == null) {
       return Scaffold(
-        backgroundColor: _P.bg,
+        backgroundColor: _LV.bg,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(
-                color: _P.lavMid,
+                color: _LV.gMid,
                 strokeWidth: 3,
               ),
               const SizedBox(height: 16),
               const Text(
-                'Loading topic...',
+                'Loading lesson...',
                 style: TextStyle(
-                  color: _P.inkMid,
+                  color: _LV.inkMid,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),
@@ -189,11 +185,11 @@ class _TopicDetailPageState extends State<TopicDetailPage>
       player: YoutubePlayer(
         controller: _ytController!,
         showVideoProgressIndicator: true,
-        progressIndicatorColor: _P.lavMid,
+        progressIndicatorColor: _LV.gMid,
         progressColors: ProgressBarColors(
-          playedColor:   _P.lavDark,
-          handleColor:   _P.inkDark,
-          bufferedColor: _P.lavLight,
+          playedColor:     _LV.gDark,
+          handleColor:     _LV.inkDark,
+          bufferedColor:   _LV.gLight,
           backgroundColor: Colors.white24,
         ),
         topActions: [
@@ -213,11 +209,11 @@ class _TopicDetailPageState extends State<TopicDetailPage>
       ),
       builder: (context, player) {
         return Scaffold(
-          backgroundColor: _P.bg,
+          backgroundColor: _LV.bg,
           body: SafeArea(
             child: Column(
               children: [
-                // ── Animated header ──────────────────────────────────
+                // Animated header
                 FadeTransition(
                   opacity: _headerFade,
                   child: SlideTransition(
@@ -226,15 +222,12 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                   ),
                 ),
 
-                // ── Scrollable content ───────────────────────────────
+                // Scrollable content
                 Expanded(
                   child: Stack(
                     children: [
-                      // Background blobs
                       _buildBgBlobs(),
-                      // Floating particles
                       ..._buildParticles(),
-                      // Main scroll
                       SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
                         child: Column(
@@ -274,7 +267,6 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                   ),
                 ),
 
-                // ── Bottom nav ───────────────────────────────────────
                 _buildBottomNav(),
               ],
             ),
@@ -284,7 +276,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     );
   }
 
-  // ── Section fade+slide wrapper ─────────────────────────────────────────────
+  // ── Section fade+slide wrapper ────────────────────────────────────────────
   Widget _buildAnimSection(Animation<double> anim, Widget child) {
     return AnimatedBuilder(
       animation: anim,
@@ -302,31 +294,37 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     );
   }
 
-  // ── Background blobs ───────────────────────────────────────────────────────
+  // ── Background blobs (green) ──────────────────────────────────────────────
   Widget _buildBgBlobs() {
     return IgnorePointer(
       child: Stack(children: [
-        Positioned(top: -40, right: -40,
-          child: Container(width: 160, height: 160,
+        Positioned(
+          top: -40, right: -40,
+          child: Container(
+            width: 160, height: 160,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _P.lavLight.withOpacity(0.55),
+              color: _LV.gLight.withOpacity(0.55),
             ),
           ),
         ),
-        Positioned(top: 280, left: -50,
-          child: Container(width: 140, height: 140,
+        Positioned(
+          top: 280, left: -50,
+          child: Container(
+            width: 140, height: 140,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _P.mintA.withOpacity(0.35),
+              color: _LV.gPale.withOpacity(0.6),
             ),
           ),
         ),
-        Positioned(bottom: 80, right: -35,
-          child: Container(width: 120, height: 120,
+        Positioned(
+          bottom: 80, right: -35,
+          child: Container(
+            width: 120, height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _P.blushA.withOpacity(0.30),
+              color: _LV.node2A.withOpacity(0.35),
             ),
           ),
         ),
@@ -334,14 +332,14 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     );
   }
 
-  // ── Floating particles ─────────────────────────────────────────────────────
+  // ── Floating particles (language themed) ─────────────────────────────────
   List<Widget> _buildParticles() {
     final items = [
-      {'e': '✨', 'lf': 0.06, 'tf': 0.04, 'ph': 0.0},
-      {'e': '📝', 'lf': 0.84, 'tf': 0.08, 'ph': 0.5},
-      {'e': '💡', 'lf': 0.88, 'tf': 0.38, 'ph': 0.8},
-      {'e': '🌟', 'lf': 0.04, 'tf': 0.55, 'ph': 0.3},
-      {'e': '🎯', 'lf': 0.80, 'tf': 0.65, 'ph': 1.0},
+      {'e': '🌿', 'lf': 0.06, 'tf': 0.04, 'ph': 0.0},
+      {'e': '💬', 'lf': 0.84, 'tf': 0.08, 'ph': 0.5},
+      {'e': '✨', 'lf': 0.88, 'tf': 0.38, 'ph': 0.8},
+      {'e': '🗣️', 'lf': 0.04, 'tf': 0.55, 'ph': 0.3},
+      {'e': '🍃', 'lf': 0.80, 'tf': 0.65, 'ph': 1.0},
     ];
     return items.map((item) {
       return AnimatedBuilder(
@@ -352,7 +350,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           final dy = math.sin(t * math.pi) * 9.0;
           return Positioned(
             left: sw  * (item['lf'] as double),
-            top: 600  * (item['tf'] as double) + dy,
+            top:  600 * (item['tf'] as double) + dy,
             child: IgnorePointer(
               child: Opacity(
                 opacity: 0.38,
@@ -366,12 +364,12 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     }).toList();
   }
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // ── Header (green gradient) ───────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [_P.lavMid, _P.lavDark],
+          colors: [_LV.gLight, _LV.gMid],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -381,7 +379,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
         ),
         boxShadow: [
           BoxShadow(
-            color: _P.lavDark.withOpacity(0.4),
+            color: _LV.gMid.withOpacity(0.4),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -389,11 +387,10 @@ class _TopicDetailPageState extends State<TopicDetailPage>
       ),
       child: Stack(
         children: [
-          // Decorative blobs inside header
           Positioned(top: -16, right: -16,
             child: Container(width: 90, height: 90,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
+                color: Colors.white.withOpacity(0.14),
                 shape: BoxShape.circle,
               ),
             ),
@@ -401,23 +398,22 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           Positioned(bottom: -12, left: 50,
             child: Container(width: 60, height: 60,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withOpacity(0.09),
                 shape: BoxShape.circle,
               ),
             ),
           ),
-          // Content
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 6, 14, 14),
             child: Row(
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: _P.inkDark, size: 20),
+                      color: _LV.inkDark, size: 20),
                   onPressed: () => Navigator.maybePop(context),
                 ),
                 const SizedBox(width: 2),
-                const Text('🎓', style: TextStyle(fontSize: 22)),
+                const Text('🌿', style: TextStyle(fontSize: 22)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -429,18 +425,18 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
-                          color: _P.inkDark,
+                          color: _LV.inkDark,
                           letterSpacing: 0.1,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
                       const Text(
-                        'Topic Detail  ✨',
+                        'Lesson Detail  🌱',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _P.inkMid,
+                          color: _LV.inkMid,
                         ),
                       ),
                     ],
@@ -454,7 +450,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.bookmark_border_rounded,
-                      color: _P.inkDark, size: 20),
+                      color: _LV.inkDark, size: 20),
                 ),
               ],
             ),
@@ -464,7 +460,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     );
   }
 
-  // ── Video section ──────────────────────────────────────────────────────────
+  // ── Video section ─────────────────────────────────────────────────────────
   Widget _buildVideoSection(Widget player) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,7 +471,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
             borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
-                color: _P.lavDark.withOpacity(0.28),
+                color: _LV.gMid.withOpacity(0.28),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -501,12 +497,12 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                     horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [_P.lavLight, _P.lavMid],
+                    colors: [_LV.gPale, _LV.gLight],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: _P.lavMid.withOpacity(0.35),
+                      color: _LV.gMid.withOpacity(0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -515,14 +511,14 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('▶', style: TextStyle(fontSize: 10, color: _P.inkDark)),
+                    Text('▶', style: TextStyle(fontSize: 10, color: _LV.inkDark)),
                     SizedBox(width: 5),
                     Text(
                       'Video Lesson',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: _P.inkDark,
+                        color: _LV.inkDark,
                       ),
                     ),
                   ],
@@ -530,11 +526,12 @@ class _TopicDetailPageState extends State<TopicDetailPage>
               ),
             ),
             const SizedBox(width: 8),
+            // Duration badge
             Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: _P.peachA,
+                color: _LV.node2A,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Row(
@@ -547,7 +544,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: _P.inkMid,
+                      color: _LV.inkMid,
                     ),
                   ),
                 ],
@@ -559,19 +556,19 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     );
   }
 
-  // ── Key points chips ───────────────────────────────────────────────────────
+  // ── Key points chips (language themed) ───────────────────────────────────
   Widget _buildKeyPoints() {
     final chips = [
-      {'icon': '📌', 'label': 'Core Concepts', 'c': _P.lavLight},
-      {'icon': '🧠', 'label': 'Problem Solving','c': _P.mintA},
-      {'icon': '📝', 'label': 'Examples',       'c': _P.peachA},
-      {'icon': '✅', 'label': 'Practice',        'c': _P.blushA},
+      {'icon': '👂', 'label': 'Listening',    'c': _LV.chip1},
+      {'icon': '🗣️', 'label': 'Speaking',     'c': _LV.chip2},
+      {'icon': '✍️', 'label': 'Writing',       'c': _LV.chip3},
+      {'icon': '📖', 'label': 'Vocabulary',    'c': _LV.chip4},
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('📚', 'What you\'ll learn'),
+        _sectionLabel('📚', 'What you\'ll practise'),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -610,7 +607,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: _P.inkDark,
+                        color: _LV.inkDark,
                       ),
                     ),
                   ],
@@ -623,19 +620,19 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     );
   }
 
-  // ── Summary card ───────────────────────────────────────────────────────────
+  // ── Summary card (green gradient) ────────────────────────────────────────
   Widget _buildSummaryCard() {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [_P.lavLight, Color(0xFFF0EAFA)],
+        gradient: LinearGradient(
+          colors: [_LV.gPale, _LV.gLight.withOpacity(0.6)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: _P.lavMid.withOpacity(0.30),
+            color: _LV.gMid.withOpacity(0.28),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -648,41 +645,40 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           _sectionLabel('📖', 'Summary'),
           const SizedBox(height: 14),
           Text(
-            'In this topic, you will learn the fundamental concepts and their applications. '
-            'Key points include understanding the core principles, practising with examples, '
-            'and applying knowledge to solve real-world problems.\n\n'
-            'By the end of this topic, you will be able to confidently answer questions '
-            'related to ${widget.topicTitle} and build a strong foundation for upcoming topics.',
+            'In this lesson, you will build a solid foundation in the core language skills. '
+            'Key focus areas include pronunciation, vocabulary building, grammar patterns, '
+            'and practical conversational phrases you can use right away.\n\n'
+            'By the end of ${widget.topicTitle}, you will be confident using these concepts '
+            'in real conversations and be ready for the next lesson.',
             style: const TextStyle(
               fontSize: 13.5,
-              color: _P.inkMid,
+              color: _LV.inkMid,
               height: 1.65,
             ),
           ),
           const SizedBox(height: 16),
-          // Progress indicator bar
+          // Green progress bar
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 0.25), // 1/4 complete
+              tween: Tween(begin: 0, end: 0.25),
               duration: const Duration(milliseconds: 900),
               curve: Curves.easeOutCubic,
               builder: (_, v, __) => LinearProgressIndicator(
                 value: v,
                 minHeight: 8,
                 backgroundColor: Colors.white.withOpacity(0.7),
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(_P.lavDark),
+                valueColor: const AlwaysStoppedAnimation<Color>(_LV.gDark),
               ),
             ),
           ),
           const SizedBox(height: 6),
           const Text(
-            '1 of 4 topics completed',
+            '1 of 4 lessons completed',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: _P.inkLight,
+              color: _LV.inkLight,
             ),
           ),
         ],
@@ -690,17 +686,16 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     );
   }
 
-  // ── Notes section ──────────────────────────────────────────────────────────
+  // ── Notes section ─────────────────────────────────────────────────────────
   Widget _buildNotesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _sectionLabel('📓', 'My Notes'),
-            _AddNoteButton(
+            _LAddNoteButton(
               isOpen: _showNoteField,
               onTap: () =>
                   setState(() => _showNoteField = !_showNoteField),
@@ -709,7 +704,6 @@ class _TopicDetailPageState extends State<TopicDetailPage>
         ),
         const SizedBox(height: 14),
 
-        // Note input (animated open/close)
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
@@ -718,7 +712,6 @@ class _TopicDetailPageState extends State<TopicDetailPage>
               : const SizedBox.shrink(),
         ),
 
-        // Empty state
         if (_notes.isEmpty && !_showNoteField)
           _buildEmptyNotes()
         else
@@ -738,7 +731,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: _P.lavMid.withOpacity(0.2),
+                color: _LV.gMid.withOpacity(0.2),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -750,12 +743,11 @@ class _TopicDetailPageState extends State<TopicDetailPage>
               TextField(
                 controller: _noteController,
                 maxLines: 3,
-                style: const TextStyle(
-                    fontSize: 13, color: _P.inkDark),
+                style: const TextStyle(fontSize: 13, color: _LV.inkDark),
                 decoration: InputDecoration(
                   hintText: 'Write your note here...',
                   hintStyle: TextStyle(
-                      color: _P.inkLight.withOpacity(0.7),
+                      color: _LV.inkLight.withOpacity(0.7),
                       fontSize: 13),
                   border: InputBorder.none,
                 ),
@@ -763,7 +755,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,
-                child: _SaveNoteButton(onTap: _saveNote),
+                child: _LSaveNoteButton(onTap: _saveNote),
               ),
             ],
           ),
@@ -780,25 +772,23 @@ class _TopicDetailPageState extends State<TopicDetailPage>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _P.lavLight, width: 1.5),
+        border: Border.all(color: _LV.gLight, width: 1.5),
       ),
       child: Column(
         children: [
           AnimatedBuilder(
             animation: _floatCtrl,
             builder: (_, child) => Transform.translate(
-              offset: Offset(
-                  0, math.sin(_floatCtrl.value * math.pi) * 5),
+              offset: Offset(0, math.sin(_floatCtrl.value * math.pi) * 5),
               child: child,
             ),
-            child: const Text('📓',
-                style: TextStyle(fontSize: 40)),
+            child: const Text('📓', style: TextStyle(fontSize: 40)),
           ),
           const SizedBox(height: 10),
           const Text(
             'No notes yet',
             style: TextStyle(
-              color: _P.inkMid,
+              color: _LV.inkMid,
               fontWeight: FontWeight.w700,
               fontSize: 14,
             ),
@@ -806,8 +796,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           const SizedBox(height: 4),
           const Text(
             'Tap "Add Note" to write something!',
-            style: TextStyle(
-                color: _P.inkLight, fontSize: 12),
+            style: TextStyle(color: _LV.inkLight, fontSize: 12),
           ),
         ],
       ),
@@ -819,8 +808,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeOutBack,
-      builder: (_, v, child) =>
-          Transform.scale(scale: v, child: child),
+      builder: (_, v, child) => Transform.scale(scale: v, child: child),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
@@ -829,13 +817,13 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: _P.lavMid.withOpacity(0.18),
+              color: _LV.gMid.withOpacity(0.18),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
           ],
-          border: Border(
-            left: BorderSide(color: _P.lavDark, width: 4),
+          border: const Border(
+            left: BorderSide(color: _LV.gDark, width: 4),
           ),
         ),
         child: Row(
@@ -846,7 +834,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                 note,
                 style: const TextStyle(
                   fontSize: 13,
-                  color: _P.inkDark,
+                  color: _LV.inkDark,
                   height: 1.5,
                 ),
               ),
@@ -856,11 +844,11 @@ class _TopicDetailPageState extends State<TopicDetailPage>
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: _P.blushA.withOpacity(0.6),
+                  color: _LV.node2A.withOpacity(0.6),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close_rounded,
-                    color: _P.inkMid, size: 14),
+                    color: _LV.inkMid, size: 14),
               ),
             ),
           ],
@@ -880,7 +868,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     }
   }
 
-  // ── Section label helper ───────────────────────────────────────────────────
+  // ── Section label helper (green icon bg) ─────────────────────────────────
   Widget _sectionLabel(String emoji, String title) {
     return Row(
       children: [
@@ -888,14 +876,14 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           width: 38, height: 38,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [_P.lavMid, _P.lavDark],
+              colors: [_LV.gLight, _LV.gMid],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: _P.lavDark.withOpacity(0.3),
+                color: _LV.gMid.withOpacity(0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -911,7 +899,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w900,
-            color: _P.inkDark,
+            color: _LV.inkDark,
             letterSpacing: -0.2,
           ),
         ),
@@ -919,7 +907,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     );
   }
 
-  // ── Bottom navigation (identical to all other pages) ──────────────────────
+  // ── Bottom nav (green active pill) ────────────────────────────────────────
   Widget _buildBottomNav() {
     final items = [
       {'icon': Icons.home_rounded,        'label': 'Home'},
@@ -934,7 +922,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: _P.lavMid.withOpacity(0.2),
+            color: _LV.gMid.withOpacity(0.2),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -948,22 +936,18 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           return GestureDetector(
             onTap: () {
               if (index == 1) {
-                // ── Search ──────────────────────────────────────────
                 Navigator.push(context,
                     MaterialPageRoute(
                         builder: (_) => const SearchPage()));
               } else if (index == 2) {
-                // ── History ─────────────────────────────────────────
                 Navigator.push(context,
                     MaterialPageRoute(
                         builder: (_) => const HistoryPage()));
               } else if (index == 3) {
-                // ── Profile ─────────────────────────────────────────
                 Navigator.push(context,
                     MaterialPageRoute(
                         builder: (_) => const ProfilePage()));
               } else {
-                // ── Home (0) / Settings (4) ──────────────────────────
                 setState(() => _bottomNavIndex = index);
               }
             },
@@ -973,7 +957,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
               padding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isActive ? _P.lavLight : Colors.transparent,
+                color: isActive ? _LV.gLight : Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
@@ -986,7 +970,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                     child: Icon(
                       items[index]['icon'] as IconData,
                       size: 24,
-                      color: isActive ? _P.inkDark : _P.inkLight,
+                      color: isActive ? _LV.inkDark : _LV.inkLight,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -995,7 +979,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      color: isActive ? _P.inkDark : _P.inkLight,
+                      color: isActive ? _LV.inkDark : _LV.inkLight,
                     ),
                   ),
                 ],
@@ -1009,12 +993,12 @@ class _TopicDetailPageState extends State<TopicDetailPage>
 }
 
 // =============================================================================
-// ADD NOTE BUTTON  (animated toggle)
+// ADD NOTE BUTTON  (green variant)
 // =============================================================================
-class _AddNoteButton extends StatelessWidget {
+class _LAddNoteButton extends StatelessWidget {
   final bool isOpen;
   final VoidCallback onTap;
-  const _AddNoteButton({required this.isOpen, required this.onTap});
+  const _LAddNoteButton({required this.isOpen, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1027,13 +1011,13 @@ class _AddNoteButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isOpen
-                ? [_P.blushA, _P.blushB]
-                : [_P.lavMid, _P.lavDark],
+                ? [_LV.node2A, _LV.node2B]   // sage green when cancel
+                : [_LV.gLight, _LV.gMid],     // mint green when add
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: (isOpen ? _P.blushB : _P.lavDark).withOpacity(0.35),
+              color: (isOpen ? _LV.node2B : _LV.gMid).withOpacity(0.35),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -1047,7 +1031,7 @@ class _AddNoteButton extends StatelessWidget {
               duration: const Duration(milliseconds: 250),
               child: Icon(
                 isOpen ? Icons.close_rounded : Icons.add_rounded,
-                color: _P.inkDark,
+                color: _LV.inkDark,
                 size: 16,
               ),
             ),
@@ -1055,7 +1039,7 @@ class _AddNoteButton extends StatelessWidget {
             Text(
               isOpen ? 'Cancel' : 'Add Note',
               style: const TextStyle(
-                color: _P.inkDark,
+                color: _LV.inkDark,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -1068,17 +1052,17 @@ class _AddNoteButton extends StatelessWidget {
 }
 
 // =============================================================================
-// SAVE NOTE BUTTON  (spring press)
+// SAVE NOTE BUTTON  (green variant)
 // =============================================================================
-class _SaveNoteButton extends StatefulWidget {
+class _LSaveNoteButton extends StatefulWidget {
   final VoidCallback onTap;
-  const _SaveNoteButton({required this.onTap});
+  const _LSaveNoteButton({required this.onTap});
 
   @override
-  State<_SaveNoteButton> createState() => _SaveNoteButtonState();
+  State<_LSaveNoteButton> createState() => _LSaveNoteButtonState();
 }
 
-class _SaveNoteButtonState extends State<_SaveNoteButton>
+class _LSaveNoteButtonState extends State<_LSaveNoteButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scale;
@@ -1088,8 +1072,8 @@ class _SaveNoteButtonState extends State<_SaveNoteButton>
     super.initState();
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 120));
-    _scale = Tween<double>(begin: 1.0, end: 0.88)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    _scale = Tween<double>(begin: 1.0, end: 0.88).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
   }
 
   @override
@@ -1108,16 +1092,15 @@ class _SaveNoteButtonState extends State<_SaveNoteButton>
       child: ScaleTransition(
         scale: _scale,
         child: Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 24, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [_P.lavMid, _P.lavDark],
+              colors: [_LV.gLight, _LV.gMid],
             ),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: _P.lavDark.withOpacity(0.35),
+                color: _LV.gMid.withOpacity(0.35),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -1131,7 +1114,7 @@ class _SaveNoteButtonState extends State<_SaveNoteButton>
               Text(
                 'Save Note',
                 style: TextStyle(
-                  color: _P.inkDark,
+                  color: _LV.inkDark,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                 ),

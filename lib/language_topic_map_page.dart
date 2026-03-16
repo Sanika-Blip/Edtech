@@ -1,164 +1,141 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'topic_detail_page.dart';
+import 'language_topic_detail_page.dart';
 import 'search_page.dart';
 import 'history_page.dart';
 import 'profile_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PASTEL PALETTE  (mirrors home1_page & chapter_page)
+// GREEN PASTEL PALETTE
 // ─────────────────────────────────────────────────────────────────────────────
-class _P {
-  static const bg       = Color(0xFFF7F4FB);
-  static const inkDark  = Color(0xFF3D3660);
-  static const inkMid   = Color(0xFF6B6490);
-  static const inkLight = Color(0xFF9E9BBF);
-  static const lavDark  = Color(0xFFB8A6D9);
-  static const lavMid   = Color(0xFFC9B8E8);
-  static const lavLight = Color(0xFFEAE3F7);
-  static const mintA    = Color(0xFFB8E4D8);
-  static const mintB    = Color(0xFF9DD4C5);
-  static const blushA   = Color(0xFFF2C4CE);
-  static const blushB   = Color(0xFFE8A8B5);
-  static const peachA   = Color(0xFFF9D9B8);
-  static const peachB   = Color(0xFFF0C49A);
-  static const skyA     = Color(0xFFB8D8F2);
-  static const skyB     = Color(0xFF9DC8EA);
-  static const lemonA   = Color(0xFFF2EDB8);
-  static const lemonB   = Color(0xFFE8E09A);
-  static const lilacA   = Color(0xFFD8B8F2);
-  static const lilacB   = Color(0xFFC8A0E8);
-  static const sagA     = Color(0xFFC8DFC4);
-  static const sagB     = Color(0xFFB0CCA8);
+class _LG {
+  static const bg        = Color(0xFFF2FAF6);
+  static const inkDark   = Color(0xFF2D6B4F);
+  static const inkMid    = Color(0xFF4E9070);
+  static const inkLight  = Color(0xFF88BBA0);
+
+  static const gDark     = Color(0xFF4A8C6F);
+  static const gMid      = Color(0xFF72B89A);
+  static const gLight    = Color(0xFFB8E4D0);
+  static const gPale     = Color(0xFFE4F5EE);
+
+  // Node accent shades — all green family
+  static const node1A    = Color(0xFFB8E4D0); // mint
+  static const node1B    = Color(0xFF9DD4B8);
+  static const node2A    = Color(0xFFC8ECD8); // sage
+  static const node2B    = Color(0xFFADD8C0);
+  static const node3A    = Color(0xFF9DCFB4); // teal
+  static const node3B    = Color(0xFF7BBFA0);
+  static const node4A    = Color(0xFF80C4A8); // deep mint
+  static const node4B    = Color(0xFF60AA8C);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DATA TYPES
+// DATA TYPES  (reuse shapes, new colour values)
 // ─────────────────────────────────────────────────────────────────────────────
-class _TopicData {
-  final String label;
-  final String emoji;
+class _LTopicData {
+  final String label, emoji;
   final bool   locked;
   final double dx, dy;
   final Color  c1, c2;
-  const _TopicData({
+  const _LTopicData({
     required this.label, required this.emoji,
     required this.locked, required this.dx, required this.dy,
-    required this.c1, required this.c2,
+    required this.c1,    required this.c2,
   });
 }
 
-class _FloatItem {
+class _LFloatItem {
   final String emoji;
-  final double dx, dy;
-  final double phase; // 0-1 offset for stagger
-  const _FloatItem(this.emoji, this.dx, this.dy, this.phase);
+  final double dx, dy, phase;
+  const _LFloatItem(this.emoji, this.dx, this.dy, this.phase);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TOPIC MAP PAGE
+// LANGUAGE TOPIC MAP PAGE
 // ─────────────────────────────────────────────────────────────────────────────
-class TopicMapPage extends StatefulWidget {
+class LanguageTopicMapPage extends StatefulWidget {
   final String chapterTitle;
-  const TopicMapPage({super.key, required this.chapterTitle});
+  const LanguageTopicMapPage({super.key, required this.chapterTitle});
 
   @override
-  State<TopicMapPage> createState() => _TopicMapPageState();
+  State<LanguageTopicMapPage> createState() => _LanguageTopicMapPageState();
 }
 
-class _TopicMapPageState extends State<TopicMapPage>
+class _LanguageTopicMapPageState extends State<LanguageTopicMapPage>
     with TickerProviderStateMixin {
   int _bottomNavIndex = 0;
 
-  // ── Controllers ────────────────────────────────────────────────────────────
-  late AnimationController _entranceCtrl;  // nodes + header pop-in
-  late AnimationController _pathCtrl;      // path draw-in
-  late AnimationController _floatCtrl;     // ambient floating particles
-  late AnimationController _pulseCtrl;     // overview node pulse
-  late AnimationController _orbitCtrl;     // star orbits around nodes
-  late AnimationController _shimmerCtrl;   // shimmer on path lines
-  late AnimationController _headerCtrl;    // header slide-in
+  // ── Controllers ──────────────────────────────────────────────────────────
+  late AnimationController _entranceCtrl;
+  late AnimationController _pathCtrl;
+  late AnimationController _floatCtrl;
+  late AnimationController _pulseCtrl;
+  late AnimationController _orbitCtrl;
+  late AnimationController _shimmerCtrl;
+  late AnimationController _headerCtrl;
 
   late Animation<double> _headerFade;
   late Animation<Offset> _headerSlide;
-  late Animation<double> _pathProgress;   // 0→1 draws the curved paths
-  late Animation<double> _pulseScale;     // overview pulse
-  late Animation<double> _orbitAngle;     // full 360 deg orbit
+  late Animation<double> _pathProgress;
+  late Animation<double> _pulseScale;
+  late Animation<double> _orbitAngle;
 
-  // ── Topic data ─────────────────────────────────────────────────────────────
-  static const List<_TopicData> _topics = [
-    _TopicData(label: 'Topic 1', emoji: '🌱', locked: false,
-        dx: 0.14, dy: 0.75, c1: _P.mintA,  c2: _P.mintB),
-    _TopicData(label: 'Topic 2', emoji: '🔥', locked: true,
-        dx: 0.42, dy: 0.54, c1: _P.blushA, c2: _P.blushB),
-    _TopicData(label: 'Topic 3', emoji: '⚡', locked: true,
-        dx: 0.65, dy: 0.32, c1: _P.lemonA, c2: _P.lemonB),
-    _TopicData(label: 'Topic 4', emoji: '🌟', locked: true,
-        dx: 0.80, dy: 0.13, c1: _P.lilacA, c2: _P.lilacB),
+  // ── Topic data (green palette, language emojis) ───────────────────────────
+  static const List<_LTopicData> _topics = [
+    _LTopicData(label: 'Lesson 1', emoji: '🌱', locked: false,
+        dx: 0.14, dy: 0.75, c1: _LG.node1A, c2: _LG.node1B),
+    _LTopicData(label: 'Lesson 2', emoji: '📖', locked: true,
+        dx: 0.42, dy: 0.54, c1: _LG.node2A, c2: _LG.node2B),
+    _LTopicData(label: 'Lesson 3', emoji: '✍️', locked: true,
+        dx: 0.65, dy: 0.32, c1: _LG.node3A, c2: _LG.node3B),
+    _LTopicData(label: 'Lesson 4', emoji: '🏆', locked: true,
+        dx: 0.80, dy: 0.13, c1: _LG.node4A, c2: _LG.node4B),
   ];
 
   static const List<List<int>> _connections = [[0,1],[1,2],[2,3]];
-
-  static const List<_FloatItem> _floaties = [
-    _FloatItem('⭐', 0.85, 0.08, 0.0),
-    _FloatItem('✏️', 0.06, 0.22, 0.3),
-    _FloatItem('📐', 0.76, 0.42, 0.6),
-    _FloatItem('🔭', 0.44, 0.60, 0.9),
-    _FloatItem('📚', 0.20, 0.70, 0.2),
-    _FloatItem('🧪', 0.80, 0.68, 0.5),
-    _FloatItem('🎯', 0.52, 0.82, 0.8),
-    _FloatItem('💡', 0.28, 0.15, 0.1),
-    _FloatItem('🖊️', 0.90, 0.30, 0.7),
-    _FloatItem('🧮', 0.38, 0.88, 0.4),
-  ];
 
   @override
   void initState() {
     super.initState();
 
-    // Header slide-in
     _headerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600))
       ..forward();
     _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
     _headerSlide = Tween<Offset>(
             begin: const Offset(0, -0.4), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
+        .animate(CurvedAnimation(
+            parent: _headerCtrl, curve: Curves.easeOutCubic));
 
-    // Node entrance — staggered elastic pop
     _entranceCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1400));
 
-    // Path draw-in (starts after 400 ms)
     _pathCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 900));
-    _pathProgress = CurvedAnimation(parent: _pathCtrl, curve: Curves.easeInOut);
+    _pathProgress =
+        CurvedAnimation(parent: _pathCtrl, curve: Curves.easeInOut);
 
-    // Ambient float
     _floatCtrl = AnimationController(
         vsync: this, duration: const Duration(seconds: 4))
       ..repeat();
 
-    // Overview pulse
     _pulseCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000))
       ..repeat(reverse: true);
-    _pulseScale = Tween<double>(begin: 0.94, end: 1.06)
-        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseScale = Tween<double>(begin: 0.94, end: 1.06).animate(
+        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    // Orbit stars around locked nodes
     _orbitCtrl = AnimationController(
         vsync: this, duration: const Duration(seconds: 4))
       ..repeat();
     _orbitAngle = Tween<double>(begin: 0, end: 2 * math.pi)
         .animate(_orbitCtrl);
 
-    // Shimmer along paths
     _shimmerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1800))
       ..repeat();
 
-    // Start sequence
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _entranceCtrl.forward();
@@ -181,21 +158,22 @@ class _TopicMapPageState extends State<TopicMapPage>
     super.dispose();
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final mq     = MediaQuery.of(context);
-    final double sw  = mq.size.width;
-    final double sh  = mq.size.height;
+    final mq          = MediaQuery.of(context);
+    final double sw   = mq.size.width;
+    final double sh   = mq.size.height;
     const double navH    = 68.0;
     const double appBarH = 72.0;
     final double mapH = sh - mq.padding.top - appBarH - navH;
 
     return Scaffold(
-      backgroundColor: _P.bg,
+      backgroundColor: _LG.bg,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Animated app bar ───────────────────────────────────
+            // Animated app bar
             FadeTransition(
               opacity: _headerFade,
               child: SlideTransition(
@@ -204,7 +182,7 @@ class _TopicMapPageState extends State<TopicMapPage>
               ),
             ),
 
-            // ── Map canvas ────────────────────────────────────────
+            // Map canvas
             Expanded(
               child: SizedBox(
                 width: sw,
@@ -212,20 +190,21 @@ class _TopicMapPageState extends State<TopicMapPage>
                 child: Stack(
                   clipBehavior: Clip.hardEdge,
                   children: [
-                    // 1 — Animated pastel background
-                    Positioned.fill(child: _AnimatedBg(floatCtrl: _floatCtrl)),
+                    // 1 — Animated green background
+                    Positioned.fill(
+                        child: _LAnimatedBg(floatCtrl: _floatCtrl)),
 
-                    // 2 — Path lines (draw-in animation)
+                    // 2 — Path lines
                     Positioned.fill(
                       child: AnimatedBuilder(
                         animation: Listenable.merge(
                             [_pathProgress, _shimmerCtrl]),
                         builder: (_, __) => CustomPaint(
-                          painter: _PathPainter(
+                          painter: _LPathPainter(
                             topics:      _topics,
                             connections: _connections,
-                            mapW: sw,
-                            mapH: mapH,
+                            mapW:        sw,
+                            mapH:        mapH,
                             progress:    _pathProgress.value,
                             shimmerT:    _shimmerCtrl.value,
                           ),
@@ -247,7 +226,6 @@ class _TopicMapPageState extends State<TopicMapPage>
               ),
             ),
 
-            // ── Bottom nav ────────────────────────────────────────
             _buildBottomNav(),
           ],
         ),
@@ -255,13 +233,13 @@ class _TopicMapPageState extends State<TopicMapPage>
     );
   }
 
-  // ── App bar ────────────────────────────────────────────────────────────────
+  // ── App bar ───────────────────────────────────────────────────────────────
   Widget _buildAppBar() {
     return Container(
       height: 72,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [_P.lavMid, _P.lavDark],
+          colors: [_LG.gLight, _LG.gMid],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -271,7 +249,7 @@ class _TopicMapPageState extends State<TopicMapPage>
         ),
         boxShadow: [
           BoxShadow(
-            color: _P.lavDark.withOpacity(0.4),
+            color: _LG.gMid.withOpacity(0.4),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -281,17 +259,19 @@ class _TopicMapPageState extends State<TopicMapPage>
         children: [
           // Decorative blobs
           Positioned(top: -18, right: -18,
-            child: Container(width: 90, height: 90,
+            child: Container(
+              width: 90, height: 90,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
+                color: Colors.white.withOpacity(0.14),
                 shape: BoxShape.circle,
               ),
             ),
           ),
           Positioned(bottom: -12, left: 40,
-            child: Container(width: 60, height: 60,
+            child: Container(
+              width: 60, height: 60,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withOpacity(0.09),
                 shape: BoxShape.circle,
               ),
             ),
@@ -303,7 +283,7 @@ class _TopicMapPageState extends State<TopicMapPage>
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: _P.inkDark, size: 20),
+                      color: _LG.inkDark, size: 20),
                   onPressed: () => Navigator.maybePop(context),
                 ),
                 const SizedBox(width: 2),
@@ -319,17 +299,17 @@ class _TopicMapPageState extends State<TopicMapPage>
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
-                          color: _P.inkDark,
+                          color: _LG.inkDark,
                           letterSpacing: 0.2,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       const Text(
-                        'Topic Map  ✨',
+                        'Lesson Map  🌿',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _P.inkMid,
+                          color: _LG.inkMid,
                         ),
                       ),
                     ],
@@ -347,14 +327,14 @@ class _TopicMapPageState extends State<TopicMapPage>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('🏆', style: TextStyle(fontSize: 13)),
+                      const Text('🏅', style: TextStyle(fontSize: 13)),
                       const SizedBox(width: 4),
                       Text(
                         '1/${_topics.length}',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
-                          color: _P.inkDark,
+                          color: _LG.inkDark,
                         ),
                       ),
                     ],
@@ -368,15 +348,14 @@ class _TopicMapPageState extends State<TopicMapPage>
     );
   }
 
-  // ── Overview node ──────────────────────────────────────────────────────────
+  // ── Overview node ─────────────────────────────────────────────────────────
   Widget _buildOverviewNode(double sw, double mapH) {
-    // Fixed 16 px from left, 6 % from top — always fully visible
     final double left = 16.0;
     final double top  = mapH * 0.06;
 
     final anim = CurvedAnimation(
       parent: _entranceCtrl,
-      curve: const Interval(0.0, 0.5, curve: Curves.elasticOut),
+      curve: const Interval(0.0, 0.5, curve: Curves.easeOutBack),
     );
 
     return Positioned(
@@ -393,29 +372,29 @@ class _TopicMapPageState extends State<TopicMapPage>
         ),
         child: GestureDetector(
           onTap: () => _openSheet(context, 'Overview',
-              emoji: '🗺️', c1: _P.lavMid, c2: _P.lavDark),
+              emoji: '🌿', c1: _LG.gLight, c2: _LG.gMid),
           child: Container(
             width: 130, height: 52,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [_P.lavLight, _P.lavMid],
+                colors: [_LG.gPale, _LG.gLight],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: _P.lavDark, width: 2),
+              border: Border.all(color: _LG.gMid, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: _P.lavDark.withOpacity(0.35),
+                  color: _LG.gMid.withOpacity(0.35),
                   blurRadius: 14,
                   spreadRadius: 1,
                   offset: const Offset(0, 5),
                 ),
               ],
             ),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 Text('🗺️', style: TextStyle(fontSize: 16)),
                 SizedBox(width: 6),
                 Text(
@@ -423,7 +402,7 @@ class _TopicMapPageState extends State<TopicMapPage>
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
-                    color: _P.inkDark,
+                    color: _LG.inkDark,
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -435,22 +414,20 @@ class _TopicMapPageState extends State<TopicMapPage>
     );
   }
 
-  // ── Topic node ─────────────────────────────────────────────────────────────
+  // ── Topic node ────────────────────────────────────────────────────────────
   Widget _buildTopicNode(
-      _TopicData data, int index, double sw, double mapH) {
+      _LTopicData data, int index, double sw, double mapH) {
     final double startT = (index * 0.15).clamp(0.0, 0.55);
     final double endT   = (startT + 0.50).clamp(0.0, 1.0);
 
     final anim = CurvedAnimation(
       parent: _entranceCtrl,
-      curve: Interval(startT, endT, curve: Curves.elasticOut),
+      curve: Interval(startT, endT, curve: Curves.easeOutBack),
     );
 
-    // Perpendicular float offset per node so they feel independent
     final floatPhase = index * 0.25;
 
     return Positioned(
-      // Centre the 76×76 node on the fractional position
       left: data.dx * sw - 38,
       top:  data.dy * mapH - 38,
       child: AnimatedBuilder(
@@ -459,7 +436,7 @@ class _TopicMapPageState extends State<TopicMapPage>
           final opacity = anim.value.clamp(0.0, 1.0);
           final scale   = anim.value.clamp(0.0, 1.2);
           final floatDy = math.sin(
-                (_floatCtrl.value + floatPhase) * 2 * math.pi) * 5.0;
+              (_floatCtrl.value + floatPhase) * 2 * math.pi) * 5.0;
           return Opacity(
             opacity: opacity,
             child: Transform.translate(
@@ -468,7 +445,7 @@ class _TopicMapPageState extends State<TopicMapPage>
             ),
           );
         },
-        child: _TopicNodeWidget(
+        child: _LTopicNodeWidget(
           data: data,
           pulseCtrl: _pulseCtrl,
           onTap: () => data.locked
@@ -480,15 +457,15 @@ class _TopicMapPageState extends State<TopicMapPage>
     );
   }
 
-  // ── Orbit sparkles (tiny stars orbiting locked nodes) ─────────────────────
+  // ── Orbit sparkles ────────────────────────────────────────────────────────
   List<Widget> _buildOrbitSparkles(double sw, double mapH) {
     final List<Widget> out = [];
     for (int i = 0; i < _topics.length; i++) {
       final t = _topics[i];
       if (!t.locked) continue;
 
-      final cx = t.dx * sw;   // node centre x
-      final cy = t.dy * mapH; // node centre y
+      final cx = t.dx * sw;
+      final cy = t.dy * mapH;
       const double radius = 52.0;
 
       out.add(AnimatedBuilder(
@@ -526,44 +503,43 @@ class _TopicMapPageState extends State<TopicMapPage>
     return out;
   }
 
-  // ── Locked bottom sheet ────────────────────────────────────────────────────
+  // ── Locked sheet ──────────────────────────────────────────────────────────
   void _lockedSheet(BuildContext ctx) {
     showModalBottomSheet(
       context: ctx,
       backgroundColor: Colors.transparent,
-      builder: (_) => _SheetWrapper(
+      builder: (_) => _LSheetWrapper(
         child: Row(
           children: [
             Container(
               width: 54, height: 54,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_P.blushA, _P.blushB],
+                  colors: [_LG.node2A, _LG.node2B],
                 ),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.lock_rounded,
-                  color: _P.inkDark, size: 24),
+                  color: _LG.inkDark, size: 24),
             ),
             const SizedBox(width: 16),
-            Expanded(
+            const Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Topic Locked 🔒',
+                  Text(
+                    'Lesson Locked 🔒',
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w900,
-                      color: _P.inkDark,
+                      color: _LG.inkDark,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Complete earlier topics first!',
-                    style: TextStyle(
-                        fontSize: 13, color: _P.inkLight),
+                  SizedBox(height: 4),
+                  Text(
+                    'Complete earlier lessons first!',
+                    style: TextStyle(fontSize: 13, color: _LG.inkLight),
                   ),
                 ],
               ),
@@ -574,7 +550,7 @@ class _TopicMapPageState extends State<TopicMapPage>
     );
   }
 
-  // ── Open topic sheet ───────────────────────────────────────────────────────
+  // ── Open topic sheet ──────────────────────────────────────────────────────
   void _openSheet(
     BuildContext ctx,
     String label, {
@@ -586,7 +562,7 @@ class _TopicMapPageState extends State<TopicMapPage>
       context: ctx,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _SheetWrapper(
+      builder: (_) => _LSheetWrapper(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -594,7 +570,7 @@ class _TopicMapPageState extends State<TopicMapPage>
             Container(
               width: 44, height: 5,
               decoration: BoxDecoration(
-                color: _P.inkLight.withOpacity(0.35),
+                color: _LG.inkLight.withOpacity(0.35),
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -628,17 +604,17 @@ class _TopicMapPageState extends State<TopicMapPage>
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
-                color: _P.inkDark,
+                color: _LG.inkDark,
               ),
             ),
             const SizedBox(height: 6),
             const Text(
-              "Ready to explore? Let's go! 🚀",
-              style: TextStyle(color: _P.inkLight, fontSize: 13),
+              "Ready to practise? Let's go! 🌿",
+              style: TextStyle(color: _LG.inkLight, fontSize: 13),
             ),
             const SizedBox(height: 26),
             // Start learning button
-            _SheetStartButton(
+            _LSheetStartButton(
               c1: c1, c2: c2,
               onTap: () {
                 Navigator.pop(ctx);
@@ -646,7 +622,7 @@ class _TopicMapPageState extends State<TopicMapPage>
                   context,
                   MaterialPageRoute(
                     builder: (_) =>
-                        TopicDetailPage(topicTitle: label),
+                        LanguageTopicDetailPage(topicTitle: label),
                   ),
                 );
               },
@@ -658,7 +634,7 @@ class _TopicMapPageState extends State<TopicMapPage>
     );
   }
 
-  // ── Bottom navigation (identical to home1_page & chapter_page) ─────────────
+  // ── Bottom nav (green active pill) ────────────────────────────────────────
   Widget _buildBottomNav() {
     final items = [
       {'icon': Icons.home_rounded,        'label': 'Home'},
@@ -673,7 +649,7 @@ class _TopicMapPageState extends State<TopicMapPage>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: _P.lavMid.withOpacity(0.2),
+            color: _LG.gMid.withOpacity(0.2),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -687,32 +663,25 @@ class _TopicMapPageState extends State<TopicMapPage>
           return GestureDetector(
             onTap: () {
               if (index == 1) {
-                // ── Search ────────────────────────────────────────
                 Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const SearchPage()));
+                    MaterialPageRoute(builder: (_) => const SearchPage()));
               } else if (index == 2) {
-                // ── History ───────────────────────────────────────
                 Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const HistoryPage()));
+                    MaterialPageRoute(builder: (_) => const HistoryPage()));
               } else if (index == 3) {
-                // ── Profile ───────────────────────────────────────
                 Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const ProfilePage()));
+                    MaterialPageRoute(builder: (_) => const ProfilePage()));
               } else {
-                // ── Home (0) / Settings (4) ───────────────────────
                 setState(() => _bottomNavIndex = index);
               }
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutBack,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isActive ? _P.lavLight : Colors.transparent,
+                color: isActive ? _LG.gLight : Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
@@ -725,7 +694,7 @@ class _TopicMapPageState extends State<TopicMapPage>
                     child: Icon(
                       items[index]['icon'] as IconData,
                       size: 24,
-                      color: isActive ? _P.inkDark : _P.inkLight,
+                      color: isActive ? _LG.inkDark : _LG.inkLight,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -734,7 +703,7 @@ class _TopicMapPageState extends State<TopicMapPage>
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      color: isActive ? _P.inkDark : _P.inkLight,
+                      color: isActive ? _LG.inkDark : _LG.inkLight,
                     ),
                   ),
                 ],
@@ -748,23 +717,23 @@ class _TopicMapPageState extends State<TopicMapPage>
 }
 
 // =============================================================================
-// TOPIC NODE WIDGET  (floating + press animation)
+// TOPIC NODE WIDGET  (green themed)
 // =============================================================================
-class _TopicNodeWidget extends StatefulWidget {
-  final _TopicData data;
+class _LTopicNodeWidget extends StatefulWidget {
+  final _LTopicData data;
   final AnimationController pulseCtrl;
   final VoidCallback onTap;
-  const _TopicNodeWidget({
+  const _LTopicNodeWidget({
     required this.data,
     required this.pulseCtrl,
     required this.onTap,
   });
 
   @override
-  State<_TopicNodeWidget> createState() => _TopicNodeWidgetState();
+  State<_LTopicNodeWidget> createState() => _LTopicNodeWidgetState();
 }
 
-class _TopicNodeWidgetState extends State<_TopicNodeWidget>
+class _LTopicNodeWidgetState extends State<_LTopicNodeWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _pressCtrl;
   late Animation<double> _pressScale;
@@ -774,8 +743,8 @@ class _TopicNodeWidgetState extends State<_TopicNodeWidget>
     super.initState();
     _pressCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 120));
-    _pressScale = Tween<double>(begin: 1.0, end: 0.86)
-        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeIn));
+    _pressScale = Tween<double>(begin: 1.0, end: 0.86).animate(
+        CurvedAnimation(parent: _pressCtrl, curve: Curves.easeIn));
   }
 
   @override
@@ -797,7 +766,7 @@ class _TopicNodeWidgetState extends State<_TopicNodeWidget>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Lock badge above node
+            // Lock badge above
             if (d.locked)
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
@@ -809,8 +778,7 @@ class _TopicNodeWidgetState extends State<_TopicNodeWidget>
                   width: 26, height: 26,
                   margin: const EdgeInsets.only(bottom: 4),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                        colors: [d.c1, d.c2]),
+                    gradient: LinearGradient(colors: [d.c1, d.c2]),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -821,7 +789,7 @@ class _TopicNodeWidgetState extends State<_TopicNodeWidget>
                     ],
                   ),
                   child: const Icon(Icons.lock_rounded,
-                      color: _P.inkDark, size: 13),
+                      color: _LG.inkDark, size: 13),
                 ),
               ),
 
@@ -829,7 +797,6 @@ class _TopicNodeWidgetState extends State<_TopicNodeWidget>
             AnimatedBuilder(
               animation: widget.pulseCtrl,
               builder: (_, child) {
-                // Only unlocked node pulses gently
                 final extra = d.locked
                     ? 0.0
                     : (widget.pulseCtrl.value - 0.5).abs() * 0.06;
@@ -870,7 +837,7 @@ class _TopicNodeWidgetState extends State<_TopicNodeWidget>
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: _P.inkDark,
+                        color: _LG.inkDark,
                         height: 1.2,
                       ),
                     ),
@@ -886,16 +853,16 @@ class _TopicNodeWidgetState extends State<_TopicNodeWidget>
 }
 
 // =============================================================================
-// PATH PAINTER  (draw-in + shimmer bead travelling along paths)
+// PATH PAINTER  (green gradient paths)
 // =============================================================================
-class _PathPainter extends CustomPainter {
-  final List<_TopicData>   topics;
-  final List<List<int>>    connections;
+class _LPathPainter extends CustomPainter {
+  final List<_LTopicData> topics;
+  final List<List<int>>   connections;
   final double mapW, mapH;
-  final double progress;   // 0→1 draws the path
-  final double shimmerT;   // 0→1 position of travelling bead
+  final double progress;
+  final double shimmerT;
 
-  const _PathPainter({
+  const _LPathPainter({
     required this.topics,
     required this.connections,
     required this.mapW,
@@ -915,13 +882,12 @@ class _PathPainter extends CustomPainter {
       final double bx = b.dx * mapW;
       final double by = b.dy * mapH;
 
-      // Bezier control point (same formula as original)
       final double cpx = (ax + bx) / 2 + (ay - by) * 0.22;
       final double cpy = (ay + by) / 2 + (bx - ax) * 0.14;
 
-      // ── Dashed background track ──────────────────────────────
+      // Dashed background track — soft green
       final dashPaint = Paint()
-        ..color = a.c1.withOpacity(0.18)
+        ..color = _LG.gMid.withOpacity(0.18)
         ..strokeWidth = 5.0
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
@@ -931,54 +897,51 @@ class _PathPainter extends CustomPainter {
         ..quadraticBezierTo(cpx, cpy, bx, by);
       _drawDashedPath(canvas, fullPath, dashPaint);
 
-      // ── Animated draw-in path ────────────────────────────────
+      // Animated draw-in path
       if (progress > 0) {
-        final drawPath = _extractPartialPath(
-          ax, ay, cpx, cpy, bx, by, progress);
+        final drawPath =
+            _extractPartialPath(ax, ay, cpx, cpy, bx, by, progress);
 
         final linePaint = Paint()
           ..shader = LinearGradient(
             colors: [a.c1.withOpacity(0.85), b.c1.withOpacity(0.85)],
-          ).createShader(Rect.fromPoints(
-              Offset(ax, ay), Offset(bx, by)))
+          ).createShader(
+              Rect.fromPoints(Offset(ax, ay), Offset(bx, by)))
           ..strokeWidth = 4.5
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round;
 
         canvas.drawPath(drawPath, linePaint);
 
-        // ── Travelling shimmer bead ──────────────────────────
+        // Travelling shimmer bead
         if (progress >= 1.0) {
-          final beadT = shimmerT;
-          final bead  = _bezierPoint(ax, ay, cpx, cpy, bx, by, beadT);
+          final bead = _bezierPoint(ax, ay, cpx, cpy, bx, by, shimmerT);
           canvas.drawCircle(
-            bead,
-            7,
+            bead, 7,
             Paint()
               ..color = Colors.white.withOpacity(0.9)
               ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
           );
-          canvas.drawCircle(bead, 4.5,
-              Paint()..color = b.c1.withOpacity(0.9));
+          canvas.drawCircle(
+              bead, 4.5, Paint()..color = _LG.gMid.withOpacity(0.9));
         }
       }
 
-      // ── Glowing end dots ─────────────────────────────────────
+      // Glowing end dots
       _drawGlowDot(canvas, Offset(ax, ay), a.c1);
       _drawGlowDot(canvas, Offset(bx, by), b.c1);
     }
   }
 
-  // Evaluate a point on a quadratic bezier at t
   Offset _bezierPoint(double ax, double ay, double cpx, double cpy,
       double bx, double by, double t) {
     final mt = 1 - t;
-    final x  = mt * mt * ax + 2 * mt * t * cpx + t * t * bx;
-    final y  = mt * mt * ay + 2 * mt * t * cpy + t * t * by;
-    return Offset(x, y);
+    return Offset(
+      mt * mt * ax + 2 * mt * t * cpx + t * t * bx,
+      mt * mt * ay + 2 * mt * t * cpy + t * t * by,
+    );
   }
 
-  // Extract the first [0..progress] portion of a quadratic bezier
   Path _extractPartialPath(double ax, double ay, double cpx, double cpy,
       double bx, double by, double t) {
     final path = Path();
@@ -986,8 +949,7 @@ class _PathPainter extends CustomPainter {
     const int steps = 40;
     final int count = (steps * t).round().clamp(1, steps);
     for (int s = 1; s <= count; s++) {
-      final st = s / steps;
-      final pt = _bezierPoint(ax, ay, cpx, cpy, bx, by, st);
+      final pt = _bezierPoint(ax, ay, cpx, cpy, bx, by, s / steps);
       path.lineTo(pt.dx, pt.dy);
     }
     return path;
@@ -1000,10 +962,7 @@ class _PathPainter extends CustomPainter {
       const double dash = 8, gap = 6;
       while (dist < metric.length) {
         final end = (dist + dash).clamp(0.0, metric.length);
-        canvas.drawPath(
-          metric.extractPath(dist, end),
-          paint,
-        );
+        canvas.drawPath(metric.extractPath(dist, end), paint);
         dist += dash + gap;
       }
     }
@@ -1022,39 +981,39 @@ class _PathPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PathPainter old) =>
+  bool shouldRepaint(_LPathPainter old) =>
       old.progress != progress || old.shimmerT != shimmerT;
 }
 
 // =============================================================================
-// ANIMATED BACKGROUND
+// ANIMATED BACKGROUND  (green variant)
 // =============================================================================
-class _AnimatedBg extends StatelessWidget {
+class _LAnimatedBg extends StatelessWidget {
   final AnimationController floatCtrl;
-  const _AnimatedBg({required this.floatCtrl});
+  const _LAnimatedBg({required this.floatCtrl});
 
-  static const List<_FloatItem> _floaties = [
-    _FloatItem('⭐', 0.88, 0.28, 0.0),
-    _FloatItem('✏️', 0.05, 0.34, 0.3),
-    _FloatItem('📐', 0.74, 0.54, 0.6),
-    _FloatItem('🔭', 0.46, 0.72, 0.9),
-    _FloatItem('📚', 0.18, 0.83, 0.2),
-    _FloatItem('🧪', 0.83, 0.76, 0.5),
-    _FloatItem('🎯', 0.55, 0.87, 0.8),
-    _FloatItem('💡', 0.30, 0.12, 0.1),
-    _FloatItem('🖊️', 0.91, 0.50, 0.7),
-    _FloatItem('🧮', 0.40, 0.91, 0.4),
+  static const List<_LFloatItem> _floaties = [
+    _LFloatItem('🌿', 0.88, 0.18, 0.0),
+    _LFloatItem('✨', 0.05, 0.28, 0.3),
+    _LFloatItem('🍃', 0.74, 0.48, 0.6),
+    _LFloatItem('💬', 0.46, 0.66, 0.9),
+    _LFloatItem('🌱', 0.18, 0.76, 0.2),
+    _LFloatItem('📖', 0.83, 0.70, 0.5),
+    _LFloatItem('✍️', 0.55, 0.84, 0.8),
+    _LFloatItem('🗣️', 0.30, 0.10, 0.1),
+    _LFloatItem('🌸', 0.91, 0.44, 0.7),
+    _LFloatItem('⭐', 0.40, 0.88, 0.4),
   ];
 
-  static const _bgIcons = <_BgIcon>[
-    _BgIcon(Icons.edit_rounded,         0.03, 0.05, 28,  10),
-    _BgIcon(Icons.straighten_rounded,   0.62, 0.01, 34,  -6),
-    _BgIcon(Icons.calculate_outlined,   0.83, 0.12, 30,   4),
-    _BgIcon(Icons.science_outlined,     0.87, 0.40, 26, -14),
-    _BgIcon(Icons.architecture_rounded, 0.70, 0.62, 28,  18),
-    _BgIcon(Icons.menu_book_outlined,   0.48, 0.76, 32,  -4),
-    _BgIcon(Icons.brush_rounded,        0.14, 0.82, 26,  20),
-    _BgIcon(Icons.push_pin_outlined,    0.54, 0.20, 22,  22),
+  static const _bgIcons = <_LBgIcon>[
+    _LBgIcon(Icons.translate_rounded,       0.03, 0.05, 28,  10),
+    _LBgIcon(Icons.record_voice_over_rounded,0.62, 0.01, 34,  -6),
+    _LBgIcon(Icons.spellcheck_rounded,      0.83, 0.12, 30,   4),
+    _LBgIcon(Icons.chat_bubble_outline,     0.87, 0.40, 26, -14),
+    _LBgIcon(Icons.menu_book_outlined,      0.70, 0.62, 28,  18),
+    _LBgIcon(Icons.headphones_rounded,      0.48, 0.76, 32,  -4),
+    _LBgIcon(Icons.edit_note_rounded,       0.14, 0.82, 26,  20),
+    _LBgIcon(Icons.stars_rounded,           0.54, 0.20, 22,  22),
   ];
 
   @override
@@ -1062,41 +1021,45 @@ class _AnimatedBg extends StatelessWidget {
     return LayoutBuilder(builder: (_, bc) {
       final w = bc.maxWidth, h = bc.maxHeight;
       return Stack(children: [
-        // Gradient background
+        // Green gradient background
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Color(0xFFF2EEF8),
-                Color(0xFFF7F4FB),
-                Color(0xFFEEF3F8),
+                Color(0xFFEEF8F3),
+                Color(0xFFF2FAF6),
+                Color(0xFFEAF6F0),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
         ),
-        // Corner blobs
+
+        // Corner blobs — all green
         Positioned(top: -40, right: -40,
-          child: Container(width: 150, height: 150,
+          child: Container(
+            width: 150, height: 150,
             decoration: BoxDecoration(
-              color: _P.lavMid.withOpacity(0.20),
+              color: _LG.gLight.withOpacity(0.28),
               shape: BoxShape.circle,
             ),
           ),
         ),
         Positioned(bottom: -50, left: -30,
-          child: Container(width: 140, height: 140,
+          child: Container(
+            width: 140, height: 140,
             decoration: BoxDecoration(
-              color: _P.mintA.withOpacity(0.22),
+              color: _LG.gMid.withOpacity(0.18),
               shape: BoxShape.circle,
             ),
           ),
         ),
         Positioned(top: h * 0.35, right: -30,
-          child: Container(width: 110, height: 110,
+          child: Container(
+            width: 110, height: 110,
             decoration: BoxDecoration(
-              color: _P.blushA.withOpacity(0.18),
+              color: _LG.node2A.withOpacity(0.22),
               shape: BoxShape.circle,
             ),
           ),
@@ -1108,7 +1071,7 @@ class _AnimatedBg extends StatelessWidget {
           child: Transform.rotate(
             angle: d.angle * math.pi / 180,
             child: Icon(d.icon, size: d.size,
-                color: _P.lavDark.withOpacity(0.09)),
+                color: _LG.gDark.withOpacity(0.07)),
           ),
         )),
 
@@ -1116,13 +1079,13 @@ class _AnimatedBg extends StatelessWidget {
         ..._floaties.map((f) => AnimatedBuilder(
           animation: floatCtrl,
           builder: (_, __) {
-            final t = (floatCtrl.value + f.phase) % 1.0;
+            final t  = (floatCtrl.value + f.phase) % 1.0;
             final dy = math.sin(t * 2 * math.pi) * 8.0;
             return Positioned(
               left: f.dx * w,
               top:  f.dy * h + dy,
               child: Opacity(
-                opacity: 0.35,
+                opacity: 0.32,
                 child: Text(f.emoji,
                     style: const TextStyle(fontSize: 18)),
               ),
@@ -1135,11 +1098,11 @@ class _AnimatedBg extends StatelessWidget {
 }
 
 // =============================================================================
-// BOTTOM SHEET WRAPPER
+// SHEET WRAPPER  (green shadow)
 // =============================================================================
-class _SheetWrapper extends StatelessWidget {
+class _LSheetWrapper extends StatelessWidget {
   final Widget child;
-  const _SheetWrapper({required this.child});
+  const _LSheetWrapper({required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -1159,7 +1122,7 @@ class _SheetWrapper extends StatelessWidget {
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: _P.lavDark.withOpacity(0.15),
+              color: _LG.gMid.withOpacity(0.18),
               blurRadius: 24,
               offset: const Offset(0, -4),
             ),
@@ -1172,19 +1135,19 @@ class _SheetWrapper extends StatelessWidget {
 }
 
 // =============================================================================
-// SHEET START BUTTON  (animated)
+// SHEET START BUTTON  (green gradient)
 // =============================================================================
-class _SheetStartButton extends StatefulWidget {
+class _LSheetStartButton extends StatefulWidget {
   final Color c1, c2;
   final VoidCallback onTap;
-  const _SheetStartButton({
+  const _LSheetStartButton({
     required this.c1, required this.c2, required this.onTap});
 
   @override
-  State<_SheetStartButton> createState() => _SheetStartButtonState();
+  State<_LSheetStartButton> createState() => _LSheetStartButtonState();
 }
 
-class _SheetStartButtonState extends State<_SheetStartButton>
+class _LSheetStartButtonState extends State<_LSheetStartButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scale;
@@ -1194,8 +1157,8 @@ class _SheetStartButtonState extends State<_SheetStartButton>
     super.initState();
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 120));
-    _scale = Tween<double>(begin: 1.0, end: 0.93)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    _scale = Tween<double>(begin: 1.0, end: 0.93).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
   }
 
   @override
@@ -1234,14 +1197,14 @@ class _SheetStartButtonState extends State<_SheetStartButton>
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('🎓', style: TextStyle(fontSize: 20)),
+              Text('🌿', style: TextStyle(fontSize: 20)),
               SizedBox(width: 8),
               Text(
-                'Start Learning',
+                'Start Practising',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
-                  color: _P.inkDark,
+                  color: _LG.inkDark,
                   letterSpacing: 0.3,
                 ),
               ),
@@ -1256,8 +1219,8 @@ class _SheetStartButtonState extends State<_SheetStartButton>
 // =============================================================================
 // HELPER DATA CLASSES
 // =============================================================================
-class _BgIcon {
+class _LBgIcon {
   final IconData icon;
   final double dx, dy, size, angle;
-  const _BgIcon(this.icon, this.dx, this.dy, this.size, this.angle);
+  const _LBgIcon(this.icon, this.dx, this.dy, this.size, this.angle);
 }
