@@ -1,0 +1,974 @@
+import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import 'search_page.dart';
+import 'home1.dart';
+import 'history_page.dart';
+import 'services/session_service.dart';
+import 'data/curriculum_data.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED PALETTE
+// ─────────────────────────────────────────────────────────────────────────────
+class _C {
+  static const bg        = Color(0xFFF7F4FB);
+  static const inkDark   = Color(0xFF3D3660);
+  static const inkMid    = Color(0xFF6B6490);
+  static const inkLight  = Color(0xFF9E9BBF);
+  static const lavDark   = Color(0xFFB8A6D9);
+  static const lavMid    = Color(0xFFC9B8E8);
+  static const lavLight  = Color(0xFFEAE3F7);
+  static const peachA    = Color(0xFFF9D9B8);
+  static const peachB    = Color(0xFFF0C49A);
+  static const mintA     = Color(0xFFB8E4D8);
+  static const mintB     = Color(0xFF9DD4C5);
+  static const blushA    = Color(0xFFF2C4CE);
+  static const blushB    = Color(0xFFE8A8B5);
+  static const skyA      = Color(0xFFB8D8F2);
+  static const skyB      = Color(0xFF9DC8EA);
+  static const lemonA    = Color(0xFFF2EDB8);
+  static const lemonB    = Color(0xFFE8E09A);
+  static const lilacA    = Color(0xFFD8B8F2);
+  static const lilacB    = Color(0xFFC8A0E8);
+  static const sagA      = Color(0xFFC8DFC4);
+  static const sagB      = Color(0xFFB0CCA8);
+  static const powderA   = Color(0xFFC4D8F0);
+  static const powderB   = Color(0xFFACC4E4);
+  static const roseA     = Color(0xFFF5C6D0);
+  static const roseB     = Color(0xFFEAADB8);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUBJECT META — emoji + colour for each subject
+// ─────────────────────────────────────────────────────────────────────────────
+const _kSubjectMeta = <String, Map<String, dynamic>>{
+  'Maths':          {'emoji': '🔢', 'c': _C.lavDark},
+  'Science':        {'emoji': '🧪', 'c': _C.mintB},
+  'English':        {'emoji': '📖', 'c': _C.blushB},
+  'History':        {'emoji': '🏛️', 'c': _C.skyB},
+  'Geography':      {'emoji': '🌍', 'c': _C.peachB},
+  'Physics':        {'emoji': '⚡', 'c': _C.lemonB},
+  'Chemistry':      {'emoji': '🧬', 'c': _C.lilacB},
+  'Biology':        {'emoji': '🌿', 'c': _C.sagB},
+  'Computer':       {'emoji': '💻', 'c': _C.powderB},
+  'Maths I':        {'emoji': '🔢', 'c': _C.lavDark},
+  'Maths II':       {'emoji': '📐', 'c': _C.skyB},
+  'Science I':      {'emoji': '🧪', 'c': _C.mintB},
+  'Science II':     {'emoji': '🌿', 'c': _C.sagB},
+  'Social Science': {'emoji': '🏛️', 'c': _C.peachB},
+  'Hindi':          {'emoji': '🔤', 'c': _C.roseB},
+  'EVS':            {'emoji': '🌍', 'c': _C.sagB},
+};
+
+Map<String, dynamic> _metaFor(String s) =>
+    _kSubjectMeta[s] ?? {'emoji': '📚', 'c': _C.lavMid};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROFILE PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage>
+    with TickerProviderStateMixin {
+  int _bottomNavIndex = 3;
+
+  // ── Live Hive reads ────────────────────────────────────────────────────────
+  int    get _streak       => SessionService.instance.currentStreak;
+  bool   get _watchedToday => SessionService.instance.watchedToday;
+  String get _username     => SessionService.instance.getSession()?.username  ?? 'Student';
+  String get _board        => SessionService.instance.getSession()?.board     ?? 'CBSE';
+  String get _className    => SessionService.instance.getSession()?.className ?? 'Class 10';
+
+  // ── Real performance data ──────────────────────────────────────────────────
+  // List of {subject, emoji, percent, c} computed from SessionService progress
+  List<Map<String, dynamic>> _performance = [];
+
+  // Completed courses: subjects where at least 1 chapter is 100% done
+  List<Map<String, dynamic>> _completedCourses = [];
+
+  // Total topics completed across all subjects
+  int _totalTopicsDone = 0;
+
+  late AnimationController _heroCtrl;
+  late AnimationController _floatCtrl;
+  late AnimationController _pulseCtrl;
+  late AnimationController _shimmerCtrl;
+  late AnimationController _statsCtrl;
+
+  late Animation<double> _heroFade;
+  late Animation<Offset> _heroSlide;
+  late Animation<double> _avatarPop;
+  late Animation<double> _statsAnim;
+
+  final List<Map<String, dynamic>> _achievements = [
+    {'emoji': '🥇', 'label': 'Top Scorer',   'color': _C.lemonA},
+    {'emoji': '🔥', 'label': '7-Day Streak', 'color': _C.peachA},
+    {'emoji': '⭐', 'label': 'Star Student',  'color': _C.lavLight},
+    {'emoji': '🏆', 'label': 'Champion',     'color': _C.mintA},
+  ];
+
+  List<Map<String, dynamic>> get _stats => [
+    {'value': '$_totalTopicsDone', 'label': 'Topics',  'emoji': '📚'},
+    {'value': '$_streak',          'label': 'Streak',  'emoji': '🔥'},
+    {'value': _watchedToday ? '✅' : '—', 'label': 'Today', 'emoji': '🎬'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgressData();
+
+    _heroCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800))
+      ..forward();
+    _heroFade  = CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOut);
+    _heroSlide = Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOutCubic));
+    _avatarPop = CurvedAnimation(parent: _heroCtrl, curve: Curves.elasticOut);
+
+    _floatCtrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 3))
+      ..repeat(reverse: true);
+
+    _pulseCtrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 2))
+      ..repeat(reverse: true);
+
+    _shimmerCtrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 2))
+      ..repeat();
+
+    _statsCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1000));
+    _statsAnim = CurvedAnimation(parent: _statsCtrl, curve: Curves.easeOutCubic);
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) _statsCtrl.forward();
+    });
+  }
+
+  // ── Compute real progress from Hive ───────────────────────────────────────
+  void _loadProgressData() {
+    final session  = SessionService.instance.getSession();
+    final board    = session?.board     ?? 'CBSE';
+    final className = session?.className ?? 'Class 10';
+
+    final subjects = CurriculumData.getSubjects(board, className);
+
+    final perfList     = <Map<String, dynamic>>[];
+    final completedList = <Map<String, dynamic>>[];
+    int   totalDone    = 0;
+
+    for (final subject in subjects) {
+      if (subject.chapters.isEmpty) continue;
+
+      int totalTopics     = 0;
+      int completedTopics = 0;
+      int completedChapters = 0;
+      String? firstCompletedChapter;
+
+      for (final chapter in subject.chapters) {
+        final topicCount = chapter.topics.length;
+        if (topicCount == 0) continue;
+
+        totalTopics += topicCount;
+
+        final done = SessionService.instance.completedTopicsInChapter(
+          board:       board,
+          className:   className,
+          subjectName: subject.name,
+          chapterId:   chapter.id,
+        );
+        completedTopics += done;
+
+        if (done == topicCount) {
+          completedChapters++;
+          firstCompletedChapter ??= chapter.title;
+        }
+      }
+
+      totalDone += completedTopics;
+
+      if (totalTopics == 0) continue;
+
+      final percent = completedTopics / totalTopics;
+      final meta    = _metaFor(subject.name);
+
+      // Only show subjects that have at least some progress
+      // OR always show all subjects (comment out the if to show all)
+      perfList.add({
+        'subject': subject.name,
+        'emoji':   meta['emoji'] as String,
+        'percent': percent,
+        'c':       meta['c'] as Color,
+        'done':    completedTopics,
+        'total':   totalTopics,
+      });
+
+      // Completed courses: at least 1 fully-done chapter
+      if (completedChapters > 0) {
+        completedList.add({
+          'subject':  subject.name,
+          'subtitle': firstCompletedChapter ?? '',
+          'emoji':    meta['emoji'] as String,
+          'c1':       (meta['c'] as Color).withOpacity(0.35),
+          'c2':       meta['c'] as Color,
+          'progress': percent,
+          'chapters': completedChapters,
+        });
+      }
+    }
+
+    // Sort performance: highest progress first
+    perfList.sort((a, b) =>
+        (b['percent'] as double).compareTo(a['percent'] as double));
+
+    _performance      = perfList;
+    _completedCourses = completedList;
+    _totalTopicsDone  = totalDone;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh every time this route becomes active
+    setState(_loadProgressData);
+  }
+
+  @override
+  void dispose() {
+    _heroCtrl.dispose();
+    _floatCtrl.dispose();
+    _pulseCtrl.dispose();
+    _shimmerCtrl.dispose();
+    _statsCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _C.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  _buildBgBlobs(),
+                  ..._buildParticles(),
+                  SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        _buildHeroHeader(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 18),
+                              _buildStatsRow(),
+                              const SizedBox(height: 22),
+                              _buildStreakCard(),
+                              const SizedBox(height: 22),
+                              _buildAchievementsSection(),
+                              const SizedBox(height: 22),
+                              // Completed courses — only shown when progress exists
+                              if (_completedCourses.isNotEmpty) ...[
+                                _buildSectionTitle('Completed Courses 🎓'),
+                                const SizedBox(height: 14),
+                                _buildCoursesRow(),
+                                const SizedBox(height: 22),
+                              ],
+                              _buildSectionTitle('Performance Overview 📊'),
+                              const SizedBox(height: 14),
+                              _buildPerformanceCard(),
+                              const SizedBox(height: 24),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _buildBottomNav(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBgBlobs() {
+    return IgnorePointer(child: Stack(children: [
+      Positioned(top: -40, right: -40,
+        child: Container(width: 200, height: 200,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: _C.lavLight.withOpacity(0.55)))),
+      Positioned(top: 260, left: -50,
+        child: Container(width: 150, height: 150,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: _C.mintA.withOpacity(0.35)))),
+      Positioned(bottom: 100, right: -30,
+        child: Container(width: 130, height: 130,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: _C.peachA.withOpacity(0.35)))),
+    ]));
+  }
+
+  List<Widget> _buildParticles() {
+    final items = [
+      {'e': '⭐', 'lf': 0.05, 'tf': 0.08, 'ph': 0.0},
+      {'e': '✨', 'lf': 0.82, 'tf': 0.05, 'ph': 0.4},
+      {'e': '🎀', 'lf': 0.87, 'tf': 0.20, 'ph': 0.9},
+      {'e': '💫', 'lf': 0.03, 'tf': 0.35, 'ph': 0.7},
+      {'e': '🌸', 'lf': 0.88, 'tf': 0.50, 'ph': 0.2},
+    ];
+    return items.map((item) => AnimatedBuilder(
+      animation: _floatCtrl,
+      builder: (ctx, _) {
+        final sw = MediaQuery.of(ctx).size.width;
+        final t  = (_floatCtrl.value + (item['ph'] as double)) % 1.0;
+        final dy = math.sin(t * math.pi) * 10.0;
+        return Positioned(
+          left: sw  * (item['lf'] as double),
+          top:  700 * (item['tf'] as double) + dy,
+          child: IgnorePointer(child: Opacity(opacity: 0.4,
+            child: Text(item['e'] as String,
+                style: const TextStyle(fontSize: 16)))));
+      })).toList();
+  }
+
+  Widget _buildHeroHeader() {
+    return FadeTransition(
+      opacity: _heroFade,
+      child: SlideTransition(
+        position: _heroSlide,
+        child: Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFC9B8E8), Color(0xFFEAD8F8)],
+              begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(36),
+              bottomRight: Radius.circular(36)),
+          ),
+          child: Stack(clipBehavior: Clip.none, children: [
+            Positioned(top: -20, right: -20,
+              child: Container(width: 120, height: 120,
+                decoration: BoxDecoration(shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.15)))),
+            Positioned(bottom: 10, left: -15,
+              child: Container(width: 80, height: 80,
+                decoration: BoxDecoration(shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.12)))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              child: Column(children: [
+                // Top row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(20)),
+                      child: const Text('👤  My Profile',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
+                          color: _C.inkDark, letterSpacing: 0.3))),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _watchedToday
+                            ? const Color(0xFF5B1F7A).withOpacity(0.85)
+                            : Colors.white.withOpacity(0.45),
+                        borderRadius: BorderRadius.circular(20)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(_watchedToday ? '✅' : '🔥',
+                            style: const TextStyle(fontSize: 13)),
+                        const SizedBox(width: 4),
+                        Text(
+                          _watchedToday ? 'Watched today' : '$_streak day streak',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                            color: _watchedToday ? Colors.white : _C.inkDark)),
+                      ]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Avatar with initial
+                ScaleTransition(
+                  scale: _avatarPop,
+                  child: Container(
+                    width: 88, height: 88,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [_C.lavDark, Color(0xFF9B7FD4)],
+                        begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      border: Border.all(color: Colors.white, width: 4),
+                      boxShadow: [BoxShadow(color: _C.lavDark.withOpacity(0.4),
+                          blurRadius: 20, offset: const Offset(0, 8))]),
+                    child: Center(child: Text(
+                      _username.isNotEmpty
+                          ? _username.substring(0, 1).toUpperCase()
+                          : 'S',
+                      style: const TextStyle(fontSize: 28,
+                        fontWeight: FontWeight.w900, color: Colors.white,
+                        letterSpacing: 1))),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('Hey, $_username! 👋',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900,
+                    color: _C.inkDark, height: 1.1)),
+                const SizedBox(height: 4),
+                Text('$_board · $_className',
+                  style: const TextStyle(fontSize: 12,
+                    fontWeight: FontWeight.w600, color: _C.inkMid)),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _HeaderBadge(
+                      emoji: _watchedToday ? '✅' : '🔥',
+                      label: '$_streak Day Streak'),
+                    const SizedBox(width: 8),
+                    _HeaderBadge(
+                      emoji: '📚',
+                      label: '$_totalTopicsDone Topics Done'),
+                    const SizedBox(width: 8),
+                    _HeaderBadge(
+                      emoji: '🎓',
+                      label: '${_completedCourses.length} Courses'),
+                  ],
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsRow() {
+    final stats = _stats;
+    return AnimatedBuilder(
+      animation: _statsAnim,
+      builder: (_, __) {
+        return Row(
+          children: stats.asMap().entries.map((e) {
+            final i    = e.key;
+            final stat = e.value;
+            final delay = i * 0.15;
+            final t = (_statsAnim.value - delay).clamp(0.0, 1.0);
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: i < stats.length - 1 ? 10 : 0),
+                child: Transform.scale(
+                  scale: Curves.easeOutBack.transform(t.clamp(0.0, 1.0)),
+                  child: _StatCard(
+                    value: stat['value'],
+                    label: stat['label'],
+                    emoji: stat['emoji'],
+                    floatCtrl: _floatCtrl,
+                    phaseOffset: i * 0.3,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildStreakCard() {
+    final today = DateTime.now();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF9D9B8), Color(0xFFF5C6B8)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: _C.peachB.withOpacity(0.45),
+            blurRadius: 14, offset: const Offset(0, 5))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: -0.12, end: 0.12),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.easeInOut,
+            builder: (_, v, child) => Transform.rotate(angle: v, child: child),
+            child: const Text('🔥', style: TextStyle(fontSize: 30))),
+          const SizedBox(width: 12),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _streak == 0 ? 'No streak yet' : '$_streak Day Streak! 🏆',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900,
+                  color: _C.inkDark)),
+              Text(
+                _watchedToday
+                    ? 'Watched today — keep it up! ✅'
+                    : _streak > 0
+                        ? 'Watch a video today to keep your streak!'
+                        : 'Watch a 2-min video to start your streak!',
+                style: const TextStyle(fontSize: 11, color: _C.inkMid,
+                  fontWeight: FontWeight.w600)),
+            ],
+          )),
+        ]),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(7, (i) {
+            final dayOffset = 6 - i;
+            final dayDate   = today.subtract(Duration(days: dayOffset));
+            final dayLabel  = ['M','T','W','T','F','S','S']
+                [dayDate.weekday - 1];
+            bool filled;
+            if (dayOffset == 0) {
+              filled = _watchedToday;
+            } else {
+              final streakStart = _watchedToday ? dayOffset : dayOffset - 1;
+              filled = _streak > 0 && streakStart < _streak;
+            }
+            return Column(children: [
+              AnimatedContainer(
+                duration: Duration(milliseconds: 200 + i * 50),
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: filled
+                      ? const Color(0xFF5B1F7A)
+                      : Colors.white.withOpacity(0.6),
+                  boxShadow: filled ? [BoxShadow(
+                    color: const Color(0xFF5B1F7A).withOpacity(0.3),
+                    blurRadius: 8, offset: const Offset(0, 3))] : [],
+                  border: Border.all(
+                    color: filled
+                        ? const Color(0xFF5B1F7A)
+                        : _C.inkLight.withOpacity(0.3),
+                    width: 1.5)),
+                child: Center(child: Text(
+                  filled ? '🔥' : dayDate.day.toString(),
+                  style: TextStyle(
+                    fontSize: filled ? 14 : 10,
+                    fontWeight: FontWeight.w800,
+                    color: filled ? Colors.white : _C.inkLight)))),
+              const SizedBox(height: 4),
+              Text(dayLabel, style: const TextStyle(fontSize: 9,
+                fontWeight: FontWeight.w700, color: _C.inkMid)),
+            ]);
+          }),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildAchievementsSection() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _buildSectionTitle('Achievements 🏅'),
+      const SizedBox(height: 14),
+      Row(
+        children: _achievements.asMap().entries.map((e) {
+          final i = e.key; final ach = e.value;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i < _achievements.length - 1 ? 10 : 0),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: Duration(milliseconds: 500 + i * 100),
+                curve: Curves.easeOutBack,
+                builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                child: _AchievementBadge(
+                  emoji: ach['emoji'], label: ach['label'],
+                  color: ach['color'], floatCtrl: _floatCtrl,
+                  phase: i * 0.25)),
+            ),
+          );
+        }).toList()),
+    ]);
+  }
+
+  Widget _buildCoursesRow() {
+    // Show up to 2 completed-course cards
+    final toShow = _completedCourses.take(2).toList();
+    if (toShow.length == 1) {
+      // Single card — full width
+      return TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutCubic,
+        builder: (_, v, child) => Opacity(opacity: v,
+          child: Transform.translate(offset: Offset(0, 20*(1-v)), child: child)),
+        child: _CourseCard(course: toShow[0]));
+    }
+    return Row(
+      children: toShow.asMap().entries.map((e) {
+        final i = e.key;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: i == 0 ? 10 : 0),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: Duration(milliseconds: 500 + i * 120),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, child) => Opacity(opacity: v,
+                child: Transform.translate(
+                    offset: Offset(0, 20*(1-v)), child: child)),
+              child: _CourseCard(course: e.value))));
+      }).toList());
+  }
+
+  // ── REAL Performance Card ──────────────────────────────────────────────────
+  Widget _buildPerformanceCard() {
+    if (_performance.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [BoxShadow(color: _C.lavMid.withOpacity(0.18),
+              blurRadius: 16, offset: const Offset(0, 6))]),
+        child: Column(children: [
+          const Text('📊', style: TextStyle(fontSize: 40)),
+          const SizedBox(height: 12),
+          const Text('No progress yet',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900,
+              color: _C.inkDark)),
+          const SizedBox(height: 6),
+          const Text(
+            'Complete topics in any subject\nto see your performance here!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: _C.inkLight,
+              fontWeight: FontWeight.w600)),
+        ]));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: _C.lavMid.withOpacity(0.18),
+            blurRadius: 16, offset: const Offset(0, 6))]),
+      child: Column(
+        children: _performance.asMap().entries.map((e) {
+          final i = e.key;
+          final p = e.value;
+          final pct = p['percent'] as double;
+          return Padding(
+            padding: EdgeInsets.only(bottom: i < _performance.length - 1 ? 18 : 0),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: pct),
+              duration: Duration(milliseconds: 900 + i * 150),
+              curve: Curves.easeOutCubic,
+              builder: (_, val, __) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Text(p['emoji'] as String,
+                        style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(p['subject'] as String,
+                      style: const TextStyle(fontSize: 13,
+                        fontWeight: FontWeight.w800, color: _C.inkDark))),
+                    // Done count chip
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: (p['c'] as Color).withOpacity(0.22),
+                        borderRadius: BorderRadius.circular(12)),
+                      child: Text(
+                        '${p['done']}/${p['total']} topics',
+                        style: const TextStyle(fontSize: 9,
+                          fontWeight: FontWeight.w700, color: _C.inkMid))),
+                    const SizedBox(width: 6),
+                    // Percentage chip
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: (p['c'] as Color).withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(12)),
+                      child: Text('${(val * 100).round()}%',
+                        style: const TextStyle(fontSize: 11,
+                          fontWeight: FontWeight.w900, color: _C.inkDark))),
+                  ]),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: val, minHeight: 10,
+                      backgroundColor: _C.lavLight,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          p['c'] as Color))),
+                ])));
+        }).toList()));
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900,
+        color: _C.inkDark, letterSpacing: -0.2)),
+      const SizedBox(height: 5),
+      Container(width: 50, height: 3,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [_C.lavDark, _C.lavLight]),
+          borderRadius: BorderRadius.circular(2))),
+    ]);
+  }
+
+  Widget _buildBottomNav() {
+    final items = [
+      {'icon': Icons.home_rounded,        'label': 'Home'},
+      {'icon': Icons.search_rounded,      'label': 'Search'},
+      {'icon': Icons.access_time_rounded, 'label': 'History'},
+      {'icon': Icons.person_rounded,      'label': 'Profile'},
+      {'icon': Icons.settings_rounded,    'label': 'Settings'},
+    ];
+    return Container(
+      decoration: BoxDecoration(color: Colors.white,
+        boxShadow: [BoxShadow(color: _C.lavMid.withOpacity(0.2),
+            blurRadius: 16, offset: const Offset(0, -4))]),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(items.length, (index) {
+          final isActive = _bottomNavIndex == index;
+          return GestureDetector(
+            onTap: () {
+              if (index == 0) {
+                Navigator.pushAndRemoveUntil(context,
+                  MaterialPageRoute(builder: (_) => const Home1Page()),
+                  (route) => false);
+              } else if (index == 1) {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const SearchPage()));
+              } else if (index == 2) {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const HistoryPage()));
+              } else {
+                setState(() => _bottomNavIndex = index);
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutBack,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isActive ? _C.lavLight : Colors.transparent,
+                borderRadius: BorderRadius.circular(14)),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                AnimatedScale(scale: isActive ? 1.22 : 1.0,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  child: Icon(items[index]['icon'] as IconData, size: 24,
+                    color: isActive ? _C.inkDark : _C.inkLight)),
+                const SizedBox(height: 3),
+                Text(items[index]['label'] as String,
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
+                    color: isActive ? _C.inkDark : _C.inkLight)),
+              ]),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// HEADER BADGE
+// =============================================================================
+class _HeaderBadge extends StatelessWidget {
+  final String emoji, label;
+  const _HeaderBadge({required this.emoji, required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.6), width: 1)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(emoji, style: const TextStyle(fontSize: 12)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 10,
+          fontWeight: FontWeight.w800, color: _C.inkDark)),
+      ]));
+  }
+}
+
+// =============================================================================
+// STAT CARD
+// =============================================================================
+class _StatCard extends StatelessWidget {
+  final String value, label, emoji;
+  final AnimationController floatCtrl;
+  final double phaseOffset;
+  const _StatCard({required this.value, required this.label, required this.emoji,
+    required this.floatCtrl, required this.phaseOffset});
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: floatCtrl,
+      builder: (_, child) {
+        final t  = (floatCtrl.value + phaseOffset) % 1.0;
+        final dy = math.sin(t * math.pi) * 4;
+        return Transform.translate(offset: Offset(0, -dy), child: child);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        decoration: BoxDecoration(color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: _C.lavMid.withOpacity(0.2),
+              blurRadius: 12, offset: const Offset(0, 4))]),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(emoji, style: const TextStyle(fontSize: 22)),
+          const SizedBox(height: 6),
+          Text(value, style: const TextStyle(fontSize: 20,
+            fontWeight: FontWeight.w900, color: _C.inkDark)),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 10,
+            fontWeight: FontWeight.w600, color: _C.inkLight)),
+        ])));
+  }
+}
+
+// =============================================================================
+// ACHIEVEMENT BADGE
+// =============================================================================
+class _AchievementBadge extends StatefulWidget {
+  final String emoji, label;
+  final Color color;
+  final AnimationController floatCtrl;
+  final double phase;
+  const _AchievementBadge({required this.emoji, required this.label,
+    required this.color, required this.floatCtrl, required this.phase});
+  @override State<_AchievementBadge> createState() => _AchievementBadgeState();
+}
+class _AchievementBadgeState extends State<_AchievementBadge> {
+  bool _pressed = false;
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.floatCtrl,
+      builder: (_, child) {
+        final t  = (widget.floatCtrl.value + widget.phase) % 1.0;
+        final dy = math.sin(t * math.pi) * 5;
+        return Transform.translate(offset: Offset(0, -dy), child: child);
+      },
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp:   (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedScale(scale: _pressed ? 0.92 : 1.0,
+          duration: const Duration(milliseconds: 150), curve: Curves.easeOutBack,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+            decoration: BoxDecoration(color: widget.color,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [BoxShadow(color: widget.color.withOpacity(0.5),
+                  blurRadius: 10, offset: const Offset(0, 4))]),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(widget.emoji, style: const TextStyle(fontSize: 26)),
+              const SizedBox(height: 6),
+              Text(widget.label, textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
+                  color: _C.inkDark)),
+            ])))));
+  }
+}
+
+// =============================================================================
+// COURSE CARD  — updated to show real chapter count
+// =============================================================================
+class _CourseCard extends StatefulWidget {
+  final Map<String, dynamic> course;
+  const _CourseCard({required this.course});
+  @override State<_CourseCard> createState() => _CourseCardState();
+}
+class _CourseCardState extends State<_CourseCard> {
+  bool _pressed = false;
+  @override
+  Widget build(BuildContext context) {
+    final course = widget.course;
+    final chapsDone = course['chapters'] as int? ?? 1;
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp:   (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 150), curve: Curves.easeOutBack,
+        child: Container(
+          decoration: BoxDecoration(color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: (course['c2'] as Color).withOpacity(0.3),
+                blurRadius: 12, offset: const Offset(0, 4))]),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              height: 90,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [course['c1'] as Color, course['c2'] as Color],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+              child: Center(child: Text(course['emoji'] as String,
+                  style: const TextStyle(fontSize: 36)))),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(course['subject'] as String, style: const TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w900, color: _C.inkDark)),
+                const SizedBox(height: 2),
+                Text(
+                  '$chapsDone chapter${chapsDone == 1 ? '' : 's'} completed',
+                  style: const TextStyle(fontSize: 10,
+                    color: _C.inkLight, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                ClipRRect(borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: course['progress'] as double,
+                    minHeight: 6, backgroundColor: _C.lavLight,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        course['c2'] as Color))),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    decoration: BoxDecoration(color: _C.lavLight,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _C.lavMid, width: 1)),
+                    child: const Center(child: Text('Report',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                        color: _C.inkDark))))),
+                  const SizedBox(width: 7),
+                  Expanded(child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    decoration: BoxDecoration(color: _C.inkDark,
+                        borderRadius: BorderRadius.circular(10)),
+                    child: const Center(child: Text('Learn 🚀',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                        color: Colors.white))))),
+                ]),
+              ])),
+          ]))));
+  }
+}
