@@ -51,6 +51,7 @@ class _Home1PageState extends State<Home1Page> with TickerProviderStateMixin {
   // ── CHANGED: typed Subject list + session ────────────────────────────────
   late List<Subject>  _subjects;
   late UserSession    _session;
+  // streak read live from Hive so it's always fresh after class switch
 
   // Colour map: emoji → (colorA, colorB)
   static (Color, Color) _colorFor(String emoji) {
@@ -115,7 +116,7 @@ class _Home1PageState extends State<Home1Page> with TickerProviderStateMixin {
 
     _streakCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200));
-    _streakCount = Tween<double>(begin: 0, end: 7)
+    _streakCount = Tween<double>(begin: 0, end: SessionService.instance.currentStreak.toDouble())
         .animate(CurvedAnimation(parent: _streakCtrl, curve: Curves.easeOutCubic));
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) _streakCtrl.forward();
@@ -132,6 +133,34 @@ class _Home1PageState extends State<Home1Page> with TickerProviderStateMixin {
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.97, end: 1.03)
         .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+  }
+
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-read session every time this route becomes visible
+    // (catches class switch: Selection → Home)
+    final session = SessionService.instance.getSession();
+    if (session != null) {
+      final newSession  = session;
+      final newSubjects = CurriculumData.getSubjects(session.board, session.className);
+      final newStreak   = SessionService.instance.currentStreak;
+      if (mounted) {
+        setState(() {
+          _session  = newSession;
+          _subjects = newSubjects;
+        });
+        // Reset streak animation to new value
+        _streakCtrl.reset();
+        _streakCount = Tween<double>(begin: 0, end: newStreak.toDouble())
+            .animate(CurvedAnimation(
+                parent: _streakCtrl, curve: Curves.easeOutCubic));
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) _streakCtrl.forward();
+        });
+      }
+    }
   }
 
   @override
@@ -814,9 +843,9 @@ class _Home1PageState extends State<Home1Page> with TickerProviderStateMixin {
               if (index == 1) {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
               } else if (index == 2) {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryPage()));
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const HistoryPage()), (route) => route.isFirst);
               } else if (index == 3) {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const ProfilePage()), (route) => route.isFirst);
               } else {
                 setState(() => _bottomNavIndex = index);
               }

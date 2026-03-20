@@ -1,3 +1,6 @@
+// lib/topic_detail_page.dart
+
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:hive/hive.dart';
@@ -5,9 +8,10 @@ import 'dart:math' as math;
 import 'search_page.dart';
 import 'history_page.dart';
 import 'profile_page.dart';
+import 'services/session_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PASTEL PALETTE
+// PALETTE
 // ─────────────────────────────────────────────────────────────────────────────
 class _P {
   static const bg       = Color(0xFFF7F4FB);
@@ -24,12 +28,12 @@ class _P {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VIDEO REGISTRY
+// VIDEO REGISTRY — add real YouTube IDs here
 // ─────────────────────────────────────────────────────────────────────────────
 class _VideoRegistry {
-  static const String _fallback = 'NybHckSEQBI';
+  static const _fallback = 'NybHckSEQBI';
   static const Map<String, String> _map = {
-    // Add real IDs here:  'Real Numbers': 'YOUTUBE_ID',
+    // 'Real Numbers': 'YOUR_ID_HERE',
   };
   static String idFor(String title) => _map[title] ?? _fallback;
 }
@@ -39,28 +43,26 @@ class _VideoRegistry {
 // ─────────────────────────────────────────────────────────────────────────────
 class TopicDetailPage extends StatefulWidget {
   final String topicTitle;
-
-  // Context for notes persistence
-  final String?      chapterId;
-  final String?      subjectName;
-  final int?         topicIndex;
-  final int?         totalTopics;
-  final String?      board;
-  final String?      className;
-
-  // ── Callback fired once user has watched ≥ 2 minutes ─────────────────────
-  final VoidCallback? onWatched;
+  final String? chapterId;
+  final String? chapterTitle;
+  final String? subjectName;
+  final int?    topicIndex;
+  final int?    totalTopics;
+  final String? board;
+  final String? className;
+  final VoidCallback? onWatched; // fired when 2-min threshold is reached
 
   const TopicDetailPage({
     super.key,
     required this.topicTitle,
     this.chapterId,
+    this.chapterTitle,
     this.subjectName,
     this.topicIndex,
     this.totalTopics,
     this.board,
     this.className,
-    this.onWatched,   // ← called by video listener, NOT a button
+    this.onWatched,
   });
 
   @override
@@ -71,42 +73,39 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     with TickerProviderStateMixin {
   int _bottomNavIndex = 0;
 
-  // YouTube
+  // ── YouTube ──────────────────────────────────────────────────────────────────
   YoutubePlayerController? _ytController;
 
-  // ── Watch-time tracking ───────────────────────────────────────────────────
-  static const int _watchThresholdSeconds = 120; // 2 minutes
-  int  _watchedSeconds   = 0;   // accumulated seconds watched
-  bool _watchedEnough    = false;
-  bool _callbackFired    = false;
-  DateTime? _playStarted;       // when the current play segment started
+  // ── Watch-time (Timer-based — reliable) ─────────────────────────────────────
+  static const int _thresholdSecs = 120; // 2 minutes
+  int    _watchedSecs    = 0;
+  bool   _watchedEnough  = false;
+  bool   _callbackFired  = false;
+  Timer? _watchTimer;
 
-  // Notes
-  final TextEditingController _noteController = TextEditingController();
+  // ── Notes ────────────────────────────────────────────────────────────────────
+  final TextEditingController _noteCtrl = TextEditingController();
   List<String> _notes       = [];
-  bool         _showNoteField = false;
+  bool         _showNote    = false;
   late String  _noteKey;
 
-  // Animation controllers
+  // ── Animations ───────────────────────────────────────────────────────────────
   late AnimationController _headerCtrl;
   late AnimationController _contentCtrl;
   late AnimationController _floatCtrl;
   late AnimationController _pulseCtrl;
-
-  late Animation<double> _headerFade;
-  late Animation<Offset> _headerSlide;
-  late Animation<double> _pulseAnim;
+  late Animation<double>   _headerFade;
+  late Animation<Offset>   _headerSlide;
+  late Animation<double>   _pulseAnim;
 
   @override
   void initState() {
     super.initState();
 
-    final board     = widget.board     ?? 'CBSE';
-    final cls       = widget.className ?? 'Class 10';
-    final subj      = widget.subjectName ?? 'Unknown';
-    final chapId    = widget.chapterId   ?? widget.topicTitle;
-    final topicIdx  = widget.topicIndex  ?? 0;
-    _noteKey = 'notes_${board}_${cls}_${subj}_${chapId}_$topicIdx';
+    // Note key — fully qualified to avoid collision
+    _noteKey = 'note|${widget.board ?? ""}|${widget.className ?? ""}|'
+        '${widget.subjectName ?? ""}|${widget.chapterId ?? ""}|'
+        '${widget.topicIndex ?? 0}';
 
     _notes = _loadNotes();
 
@@ -114,8 +113,10 @@ class _TopicDetailPageState extends State<TopicDetailPage>
         vsync: this, duration: const Duration(milliseconds: 650))
       ..forward();
     _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
-    _headerSlide = Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
+    _headerSlide = Tween<Offset>(
+            begin: const Offset(0, -0.3), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _headerCtrl, curve: Curves.easeOutCubic));
 
     _contentCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000))
@@ -131,62 +132,77 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     _pulseAnim = Tween<double>(begin: 0.95, end: 1.05)
         .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
+    // Init YouTube controller after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final controller = YoutubePlayerController(
+      final ctrl = YoutubePlayerController(
         initialVideoId: _VideoRegistry.idFor(widget.topicTitle),
         flags: const YoutubePlayerFlags(
           autoPlay: false, mute: false,
-          enableCaption: true, controlsVisibleAtStart: true, forceHD: false,
+          enableCaption: true, controlsVisibleAtStart: true,
         ),
       );
-      // ── Listen for play/pause to track watch time ────────────────────────
-      controller.addListener(_onPlayerStateChange);
-      setState(() => _ytController = controller);
+      ctrl.addListener(_onYtStateChange);
+      setState(() => _ytController = ctrl);
+      // Start polling 500 ms after controller is assigned
+      Future.delayed(const Duration(milliseconds: 500), _startTimer);
     });
   }
 
-  // ── YouTube listener: accumulates watch time ───────────────────────────────
-  void _onPlayerStateChange() {
-    if (_ytController == null) return;
-    final state = _ytController!.value;
+  // ── Timer: ticks every second, counts only while playing ──────────────────
+  void _startTimer() {
+    _watchTimer?.cancel();
+    _watchTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _callbackFired) {
+        _watchTimer?.cancel();
+        return;
+      }
+      if (_ytController?.value.playerState == PlayerState.playing) {
+        _watchedSecs++;
+        if (_watchedSecs % 5 == 0 && mounted) setState(() {}); // refresh badge
 
-    if (state.playerState == PlayerState.playing) {
-      // Record when this play segment started
-      _playStarted ??= DateTime.now();
-    } else {
-      // Paused, ended, or buffering — add elapsed time
-      if (_playStarted != null) {
-        final elapsed = DateTime.now().difference(_playStarted!).inSeconds;
-        _watchedSeconds += elapsed;
-        _playStarted = null;
-
-        if (_watchedSeconds >= _watchThresholdSeconds && !_callbackFired) {
+        if (_watchedSecs >= _thresholdSecs) {
+          _watchTimer?.cancel();
           _callbackFired = true;
-          setState(() => _watchedEnough = true);
-          widget.onWatched?.call(); // ← fires completion back to TopicMapPage
-          _showCompletionSnack();
+          if (mounted) setState(() => _watchedEnough = true);
+          _onThresholdReached();
         }
       }
-    }
+    });
   }
 
-  void _showCompletionSnack() {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(children: [
-          Text('🎉', style: TextStyle(fontSize: 18)),
-          SizedBox(width: 10),
-          Text('Topic completed! Next topic unlocked.',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        ]),
-        backgroundColor: const Color(0xFF5B1F7A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        duration: const Duration(seconds: 3),
-      ),
+  // ── Called exactly once when threshold is reached ──────────────────────────
+  void _onThresholdReached() {
+    widget.onWatched?.call();
+    SessionService.instance.recordWatchToday();
+    SessionService.instance.recordWatchHistory(
+      subject:        widget.subjectName   ?? 'Unknown',
+      chapterTitle:   widget.chapterTitle  ?? widget.chapterId ?? 'Unknown',
+      topicTitle:     widget.topicTitle,
+      watchedSeconds: _watchedSecs,
     );
+    _showSnack();
+  }
+
+  void _showSnack() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Row(children: [
+        Text('🎉', style: TextStyle(fontSize: 18)),
+        SizedBox(width: 10),
+        Expanded(child: Text('Topic completed! Next topic unlocked.',
+            style: TextStyle(fontWeight: FontWeight.w700))),
+      ]),
+      backgroundColor: const Color(0xFF5B1F7A),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      duration: const Duration(seconds: 3),
+    ));
+  }
+
+  // ── YouTube listener — only used to refresh UI badge ──────────────────────
+  void _onYtStateChange() {
+    if (mounted) setState(() {});
   }
 
   // ── Notes ──────────────────────────────────────────────────────────────────
@@ -195,7 +211,7 @@ class _TopicDetailPageState extends State<TopicDetailPage>
       final box = Hive.box('sessionBox');
       final raw = box.get(_noteKey) as String?;
       if (raw != null && raw.isNotEmpty) {
-        return raw.split('|').where((s) => s.isNotEmpty).toList();
+        return raw.split('||').where((s) => s.isNotEmpty).toList();
       }
     } catch (_) {}
     return [];
@@ -203,24 +219,33 @@ class _TopicDetailPageState extends State<TopicDetailPage>
 
   Future<void> _saveNotes() async {
     try {
-      final box = Hive.box('sessionBox');
-      await box.put(_noteKey, _notes.join('|'));
+      await Hive.box('sessionBox').put(_noteKey, _notes.join('||'));
     } catch (_) {}
+  }
+
+  void _addNote() {
+    final text = _noteCtrl.text.trim();
+    if (text.isNotEmpty) {
+      setState(() {
+        _notes.insert(0, text);
+        _noteCtrl.clear();
+        _showNote = false;
+      });
+      _saveNotes();
+    }
+  }
+
+  void _deleteNote(int index) {
+    setState(() => _notes.removeAt(index));
+    _saveNotes();
   }
 
   @override
   void dispose() {
-    // Flush remaining watch time on exit
-    if (_playStarted != null && !_callbackFired) {
-      final elapsed = DateTime.now().difference(_playStarted!).inSeconds;
-      _watchedSeconds += elapsed;
-      if (_watchedSeconds >= _watchThresholdSeconds) {
-        widget.onWatched?.call();
-      }
-    }
-    _ytController?.removeListener(_onPlayerStateChange);
+    _watchTimer?.cancel();
+    _ytController?.removeListener(_onYtStateChange);
     _ytController?.dispose();
-    _noteController.dispose();
+    _noteCtrl.dispose();
     _headerCtrl.dispose();
     _contentCtrl.dispose();
     _floatCtrl.dispose();
@@ -228,22 +253,18 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     super.dispose();
   }
 
-  Animation<double> _sectionAnim(double start, double end) =>
+  Animation<double> _secAnim(double start, double end) =>
       CurvedAnimation(parent: _contentCtrl,
           curve: Interval(start, end, curve: Curves.easeOutCubic));
 
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     if (_ytController == null) {
       return Scaffold(
         backgroundColor: _P.bg,
-        body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          CircularProgressIndicator(color: _P.lavMid, strokeWidth: 3),
-          const SizedBox(height: 16),
-          const Text('Loading topic...',
-            style: TextStyle(color: _P.inkMid, fontWeight: FontWeight.w600,
-              fontSize: 14)),
-        ])),
+        body: const Center(child: CircularProgressIndicator(
+            color: _P.lavMid, strokeWidth: 3)),
       );
     }
 
@@ -253,119 +274,104 @@ class _TopicDetailPageState extends State<TopicDetailPage>
         showVideoProgressIndicator: true,
         progressIndicatorColor: _P.lavMid,
         progressColors: ProgressBarColors(
-          playedColor: _P.lavDark, handleColor: _P.inkDark,
-          bufferedColor: _P.lavLight, backgroundColor: Colors.white24),
+          playedColor:     _P.lavDark,
+          handleColor:     _P.inkDark,
+          bufferedColor:   _P.lavLight,
+          backgroundColor: Colors.white24,
+        ),
         topActions: [
           const SizedBox(width: 8),
           Expanded(child: Text(widget.topicTitle,
             style: const TextStyle(color: Colors.white, fontSize: 13,
-              fontWeight: FontWeight.w700),
+                fontWeight: FontWeight.w700),
             overflow: TextOverflow.ellipsis)),
         ],
       ),
-      builder: (context, player) {
-        return Scaffold(
-          backgroundColor: _P.bg,
-          resizeToAvoidBottomInset: true,
-          body: SafeArea(
-            child: Column(children: [
-              FadeTransition(
-                opacity: _headerFade,
-                child: SlideTransition(position: _headerSlide,
-                    child: _buildHeader())),
-              Expanded(
-                child: Stack(children: [
-                  _buildBgBlobs(),
-                  ..._buildParticles(),
-                  SingleChildScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildAnimSection(_sectionAnim(0.0, 0.4),
-                            _buildVideoSection(player)),
-                        const SizedBox(height: 20),
-                        _buildAnimSection(_sectionAnim(0.15, 0.55),
-                            _buildKeyPoints()),
-                        const SizedBox(height: 20),
-                        _buildAnimSection(_sectionAnim(0.30, 0.70),
-                            _buildSummaryCard()),
-                        const SizedBox(height: 20),
-                        _buildAnimSection(_sectionAnim(0.45, 0.85),
-                            _buildNotesSection()),
-                        SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 24),
-                      ],
-                    ),
-                  ),
-                ]),
-              ),
-              _buildBottomNav(),
-            ]),
-          ),
-        );
-      },
+      builder: (ctx, player) => Scaffold(
+        backgroundColor: _P.bg,
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(child: Column(children: [
+          FadeTransition(opacity: _headerFade,
+            child: SlideTransition(position: _headerSlide,
+                child: _buildHeader())),
+          Expanded(child: Stack(children: [
+            _buildBlobs(),
+            ..._buildParticles(),
+            SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _animWrap(_secAnim(0.0, 0.4), _buildVideoSection(player)),
+                const SizedBox(height: 20),
+                _animWrap(_secAnim(0.15, 0.55), _buildKeyPoints()),
+                const SizedBox(height: 20),
+                _animWrap(_secAnim(0.30, 0.70), _buildSummaryCard()),
+                const SizedBox(height: 20),
+                _animWrap(_secAnim(0.45, 0.85), _buildNotesSection()),
+                SizedBox(height: MediaQuery.of(ctx).viewInsets.bottom + 24),
+              ]),
+            ),
+          ])),
+          _buildBottomNav(),
+        ])),
+      ),
     );
   }
 
-  Widget _buildAnimSection(Animation<double> anim, Widget child) {
-    return AnimatedBuilder(
-      animation: anim,
-      builder: (_, c) => FadeTransition(opacity: anim,
-        child: SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
-              .animate(anim), child: c)),
-      child: child,
-    );
-  }
+  Widget _animWrap(Animation<double> anim, Widget child) =>
+      AnimatedBuilder(
+        animation: anim,
+        builder: (_, c) => FadeTransition(opacity: anim,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.12), end: Offset.zero).animate(anim),
+            child: c)),
+        child: child,
+      );
 
-  Widget _buildBgBlobs() {
-    return IgnorePointer(child: Stack(children: [
-      Positioned(top:-40,right:-40, child: Container(width:160,height:160,
-        decoration: BoxDecoration(shape:BoxShape.circle,
-          color:_P.lavLight.withOpacity(0.55)))),
-      Positioned(top:280,left:-50, child: Container(width:140,height:140,
-        decoration: BoxDecoration(shape:BoxShape.circle,
-          color:_P.mintA.withOpacity(0.35)))),
-      Positioned(bottom:80,right:-35, child: Container(width:120,height:120,
-        decoration: BoxDecoration(shape:BoxShape.circle,
-          color:_P.blushA.withOpacity(0.30)))),
-    ]));
-  }
+  Widget _buildBlobs() => IgnorePointer(child: Stack(children: [
+    Positioned(top:-40,right:-40, child: Container(width:160,height:160,
+      decoration: BoxDecoration(shape:BoxShape.circle,
+        color:_P.lavLight.withOpacity(0.55)))),
+    Positioned(top:280,left:-50, child: Container(width:140,height:140,
+      decoration: BoxDecoration(shape:BoxShape.circle,
+        color:_P.mintA.withOpacity(0.35)))),
+    Positioned(bottom:80,right:-35, child: Container(width:120,height:120,
+      decoration: BoxDecoration(shape:BoxShape.circle,
+        color:_P.blushA.withOpacity(0.30)))),
+  ]));
 
   List<Widget> _buildParticles() {
-    final items = [
-      {'e':'✨','lf':0.06,'tf':0.04,'ph':0.0},
-      {'e':'📝','lf':0.84,'tf':0.08,'ph':0.5},
-      {'e':'💡','lf':0.88,'tf':0.38,'ph':0.8},
-      {'e':'🌟','lf':0.04,'tf':0.55,'ph':0.3},
-      {'e':'🎯','lf':0.80,'tf':0.65,'ph':1.0},
+    const items = [
+      ['✨',0.06,0.04,0.0],['📝',0.84,0.08,0.5],
+      ['💡',0.88,0.38,0.8],['🌟',0.04,0.55,0.3],['🎯',0.80,0.65,1.0],
     ];
     return items.map((item) => AnimatedBuilder(
       animation: _floatCtrl,
       builder: (ctx, _) {
         final sw = MediaQuery.of(ctx).size.width;
-        final t  = (_floatCtrl.value + (item['ph'] as double)) % 1.0;
+        final t  = (_floatCtrl.value + (item[3] as double)) % 1.0;
         final dy = math.sin(t * math.pi) * 9.0;
         return Positioned(
-          left: sw * (item['lf'] as double),
-          top:  600 * (item['tf'] as double) + dy,
+          left: sw  * (item[1] as double),
+          top:  600 * (item[2] as double) + dy,
           child: IgnorePointer(child: Opacity(opacity: 0.38,
-            child: Text(item['e'] as String,
+            child: Text(item[0] as String,
                 style: const TextStyle(fontSize: 17)))));
       })).toList();
   }
 
   Widget _buildHeader() {
+    final progress = (_watchedSecs / _thresholdSecs).clamp(0.0, 1.0);
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [_P.lavMid, _P.lavDark],
+        gradient: const LinearGradient(
+          colors: [_P.lavMid, _P.lavDark],
           begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
         boxShadow: [BoxShadow(color: _P.lavDark.withOpacity(0.4),
-            blurRadius: 16, offset: const Offset(0, 6))],
-      ),
+            blurRadius: 16, offset: const Offset(0, 6))]),
       child: Stack(children: [
         Positioned(top:-16,right:-16, child: Container(width:90,height:90,
           decoration: BoxDecoration(color:Colors.white.withOpacity(0.12),
@@ -388,99 +394,113 @@ class _TopicDetailPageState extends State<TopicDetailPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(widget.topicTitle,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900,
-                    color: _P.inkDark, letterSpacing: 0.1),
+                  style: const TextStyle(fontSize: 16,
+                    fontWeight: FontWeight.w900, color: _P.inkDark),
                   overflow: TextOverflow.ellipsis, maxLines: 1),
-                const Text('Topic Detail  ✨',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                    color: _P.inkMid)),
+                Text('${widget.subjectName ?? ""} · ${widget.chapterTitle ?? ""}',
+                  style: const TextStyle(fontSize: 10,
+                    fontWeight: FontWeight.w600, color: _P.inkMid),
+                  overflow: TextOverflow.ellipsis, maxLines: 1),
               ],
             )),
             // Watch progress badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _watchedEnough
-                    ? const Color(0xFF5B1F7A).withOpacity(0.85)
-                    : Colors.white.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(20)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(_watchedEnough ? '✅' : '⏱️',
-                    style: const TextStyle(fontSize: 12)),
-                const SizedBox(width: 4),
-                Text(
-                  _watchedEnough ? 'Done' : '${(_watchedSeconds / 60).floor()}m watched',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                    color: _watchedEnough ? Colors.white : _P.inkDark)),
-              ]),
+            AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (_, child) => Transform.scale(
+                  scale: _watchedEnough ? 1.0 : _pulseAnim.value,
+                  child: child),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _watchedEnough
+                      ? const Color(0xFF5B1F7A)
+                      : Colors.white.withOpacity(0.55),
+                  borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(_watchedEnough ? '✅' : '⏱️',
+                      style: const TextStyle(fontSize: 12)),
+                  const SizedBox(width: 4),
+                  Text(
+                    _watchedEnough
+                        ? 'Done!'
+                        : '${(_watchedSecs / 60).floor()}m ${_watchedSecs % 60}s',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                      color: _watchedEnough ? Colors.white : _P.inkDark)),
+                ])),
             ),
           ]),
         ),
+        // Progress bar at bottom of header
+        Positioned(left:0, right:0, bottom:0,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(28),
+              bottomRight: Radius.circular(28)),
+            child: LinearProgressIndicator(
+              value: progress, minHeight: 4,
+              backgroundColor: Colors.white.withOpacity(0.25),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                _watchedEnough ? Colors.white : _P.lavLight)))),
       ]),
     );
   }
 
-  // ── VIDEO: 16:9 fixed, no full-screen takeover on tablet ─────────────────
+  // TABLET FIX: player inside LayoutBuilder with fixed 16:9 height
   Widget _buildVideoSection(Widget player) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        LayoutBuilder(builder: (_, constraints) {
-          final w = constraints.maxWidth;
-          return Container(
-            width: w, height: w * 9 / 16,
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      LayoutBuilder(builder: (_, c) {
+        final h = c.maxWidth * 9 / 16;
+        return Container(
+          width: c.maxWidth, height: h,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [BoxShadow(color: _P.lavDark.withOpacity(0.28),
+                blurRadius: 20, offset: const Offset(0, 8))]),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22), child: player));
+      }),
+      const SizedBox(height: 12),
+      Row(children: [
+        AnimatedBuilder(
+          animation: _pulseAnim,
+          builder: (_, child) =>
+              Transform.scale(scale: _pulseAnim.value, child: child),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [BoxShadow(color: _P.lavDark.withOpacity(0.28),
-                  blurRadius: 20, offset: const Offset(0, 8))]),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22), child: player));
-        }),
-        const SizedBox(height: 12),
-        Row(children: [
-          AnimatedBuilder(
-            animation: _pulseAnim,
-            builder: (_, child) =>
-                Transform.scale(scale: _pulseAnim.value, child: child),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [_P.lavLight, _P.lavMid]),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: _P.lavMid.withOpacity(0.35),
-                    blurRadius: 8, offset: const Offset(0, 3))]),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Text('▶', style: TextStyle(fontSize: 10, color: _P.inkDark)),
-                SizedBox(width: 5),
-                Text('Video Lesson', style: TextStyle(fontSize: 11,
-                    fontWeight: FontWeight.w800, color: _P.inkDark)),
-              ]),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(color: _P.peachA,
-                borderRadius: BorderRadius.circular(20)),
+              gradient: const LinearGradient(colors: [_P.lavLight, _P.lavMid]),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: _P.lavMid.withOpacity(0.35),
+                  blurRadius: 8, offset: const Offset(0, 3))]),
             child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('🕐', style: TextStyle(fontSize: 10)),
-              SizedBox(width: 4),
-              Text('Watch 2 min to complete',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                  color: _P.inkMid)),
-            ]),
-          ),
-        ]),
-      ],
-    );
+              Text('▶', style: TextStyle(fontSize: 10, color: _P.inkDark)),
+              SizedBox(width: 5),
+              Text('Video Lesson', style: TextStyle(fontSize: 11,
+                  fontWeight: FontWeight.w800, color: _P.inkDark)),
+            ])),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(color: _P.peachA,
+              borderRadius: BorderRadius.circular(20)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('🕐', style: TextStyle(fontSize: 10)),
+            SizedBox(width: 4),
+            Text('Watch 2 min to complete',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                color: _P.inkMid)),
+          ])),
+      ]),
+    ]);
   }
 
   Widget _buildKeyPoints() {
-    final chips = [
-      {'icon': '📌', 'label': 'Core Concepts', 'c': _P.lavLight},
-      {'icon': '🧠', 'label': 'Problem Solving','c': _P.mintA},
-      {'icon': '📝', 'label': 'Examples',       'c': _P.peachA},
-      {'icon': '✅', 'label': 'Practice',        'c': _P.blushA},
+    const chips = [
+      ['📌','Core Concepts', _P.lavLight],
+      ['🧠','Problem Solving',_P.mintA],
+      ['📝','Examples',       _P.peachA],
+      ['✅','Practice',        _P.blushA],
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _sectionLabel('📚', "What you'll learn"),
@@ -496,25 +516,27 @@ class _TopicDetailPageState extends State<TopicDetailPage>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               decoration: BoxDecoration(
-                color: chip['c'] as Color,
+                color: chip[2] as Color,
                 borderRadius: BorderRadius.circular(22),
-                boxShadow: [BoxShadow(color: (chip['c'] as Color).withOpacity(0.45),
-                    blurRadius: 8, offset: const Offset(0, 3))]),
+                boxShadow: [BoxShadow(
+                  color: (chip[2] as Color).withOpacity(0.45),
+                  blurRadius: 8, offset: const Offset(0, 3))]),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(chip['icon'] as String, style: const TextStyle(fontSize: 13)),
+                Text(chip[0] as String, style: const TextStyle(fontSize: 13)),
                 const SizedBox(width: 6),
-                Text(chip['label'] as String,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
-                    color: _P.inkDark)),
+                Text(chip[1] as String, style: const TextStyle(fontSize: 12,
+                  fontWeight: FontWeight.w800, color: _P.inkDark)),
               ])));
         }).toList()),
     ]);
   }
 
   Widget _buildSummaryCard() {
+    final progress = (_watchedSecs / _thresholdSecs).clamp(0.0, 1.0);
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [_P.lavLight, Color(0xFFF0EAFA)],
+        gradient: const LinearGradient(
+          colors: [_P.lavLight, Color(0xFFF0EAFA)],
           begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [BoxShadow(color: _P.lavMid.withOpacity(0.30),
@@ -526,29 +548,23 @@ class _TopicDetailPageState extends State<TopicDetailPage>
         Text(
           'In this topic you will learn the fundamental concepts of '
           '${widget.topicTitle} and their real-world applications. '
-          'Watch the full video, try the practice examples, and use '
-          'the notes section to capture key ideas.\n\n'
-          "Complete 2 minutes of video to unlock the next topic.",
+          'Watch the full video to unlock the next topic.',
           style: const TextStyle(fontSize: 13.5, color: _P.inkMid, height: 1.65)),
         const SizedBox(height: 16),
-        // Watch progress bar
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+        // Real-time progress bar
+        ClipRRect(borderRadius: BorderRadius.circular(10),
           child: LinearProgressIndicator(
-            value: (_watchedSeconds / _watchThresholdSeconds).clamp(0.0, 1.0),
-            minHeight: 8,
+            value: progress, minHeight: 8,
             backgroundColor: Colors.white.withOpacity(0.7),
             valueColor: AlwaysStoppedAnimation<Color>(
-              _watchedEnough ? const Color(0xFF5B1F7A) : _P.lavDark),
-          ),
-        ),
+              _watchedEnough ? const Color(0xFF5B1F7A) : _P.lavDark))),
         const SizedBox(height: 6),
         Text(
           _watchedEnough
               ? '✅ Topic completed!'
-              : '${_watchedSeconds}s / 120s watched',
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-            color: _P.inkLight)),
+              : '$_watchedSecs s / $_thresholdSecs s watched',
+          style: const TextStyle(fontSize: 11,
+            fontWeight: FontWeight.w600, color: _P.inkLight)),
       ]),
     );
   }
@@ -557,14 +573,14 @@ class _TopicDetailPageState extends State<TopicDetailPage>
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         _sectionLabel('📓', 'My Notes'),
-        _AddNoteButton(isOpen: _showNoteField,
-            onTap: () => setState(() => _showNoteField = !_showNoteField)),
+        _AddNoteBtn(isOpen: _showNote,
+            onTap: () => setState(() => _showNote = !_showNote)),
       ]),
       const SizedBox(height: 14),
       AnimatedSize(
         duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic,
-        child: _showNoteField ? _buildNoteInput() : const SizedBox.shrink()),
-      if (_notes.isEmpty && !_showNoteField)
+        child: _showNote ? _buildNoteInput() : const SizedBox.shrink()),
+      if (_notes.isEmpty && !_showNote)
         _buildEmptyNotes()
       else
         ..._notes.asMap().entries.map((e) => _buildNoteCard(e.key, e.value)),
@@ -581,15 +597,16 @@ class _TopicDetailPageState extends State<TopicDetailPage>
         padding: const EdgeInsets.all(16),
         child: Column(children: [
           TextField(
-            controller: _noteController, maxLines: 3,
+            controller: _noteCtrl, maxLines: 3,
             style: const TextStyle(fontSize: 13, color: _P.inkDark),
             decoration: InputDecoration(
               hintText: 'Write your note here...',
-              hintStyle: TextStyle(color: _P.inkLight.withOpacity(0.7), fontSize: 13),
+              hintStyle: TextStyle(color: _P.inkLight.withOpacity(0.7),
+                  fontSize: 13),
               border: InputBorder.none)),
           const SizedBox(height: 8),
           Align(alignment: Alignment.centerRight,
-            child: _SaveNoteButton(onTap: _saveNote)),
+            child: _SaveNoteBtn(onTap: _addNote)),
         ])),
       const SizedBox(height: 14),
     ]);
@@ -610,12 +627,12 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           child: const Text('📓', style: TextStyle(fontSize: 40))),
         const SizedBox(height: 10),
         const Text('No notes yet',
-          style: TextStyle(color: _P.inkMid, fontWeight: FontWeight.w700, fontSize: 14)),
+          style: TextStyle(color: _P.inkMid, fontWeight: FontWeight.w700,
+            fontSize: 14)),
         const SizedBox(height: 4),
         const Text('Tap "Add Note" to write something!',
           style: TextStyle(color: _P.inkLight, fontSize: 12)),
-      ]),
-    );
+      ]));
   }
 
   Widget _buildNoteCard(int index, String note) {
@@ -631,34 +648,20 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(color: _P.lavMid.withOpacity(0.18),
               blurRadius: 10, offset: const Offset(0, 3))],
-          border: const Border(left: BorderSide(color: _P.lavDark, width: 4))),
+          border: const Border(
+              left: BorderSide(color: _P.lavDark, width: 4))),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Text(note, style: const TextStyle(fontSize: 13,
-              color: _P.inkDark, height: 1.5))),
+          Expanded(child: Text(note, style: const TextStyle(
+              fontSize: 13, color: _P.inkDark, height: 1.5))),
           GestureDetector(
-            onTap: () {
-              setState(() => _notes.removeAt(index));
-              _saveNotes();
-            },
+            onTap: () => _deleteNote(index),
             child: Container(
               padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(color: _P.blushA.withOpacity(0.6),
-                  shape: BoxShape.circle),
-              child: const Icon(Icons.close_rounded, color: _P.inkMid, size: 14))),
-        ])),
-    );
-  }
-
-  void _saveNote() {
-    final text = _noteController.text.trim();
-    if (text.isNotEmpty) {
-      setState(() {
-        _notes.insert(0, text);
-        _noteController.clear();
-        _showNoteField = false;
-      });
-      _saveNotes();
-    }
+              decoration: BoxDecoration(
+                color: _P.blushA.withOpacity(0.6), shape: BoxShape.circle),
+              child: const Icon(Icons.close_rounded,
+                  color: _P.inkMid, size: 14))),
+        ])));
   }
 
   Widget _sectionLabel(String emoji, String title) {
@@ -670,10 +673,11 @@ class _TopicDetailPageState extends State<TopicDetailPage>
           borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: _P.lavDark.withOpacity(0.3),
               blurRadius: 8, offset: const Offset(0, 3))]),
-        child: Center(child: Text(emoji, style: const TextStyle(fontSize: 18)))),
+        child: Center(child: Text(emoji,
+            style: const TextStyle(fontSize: 18)))),
       const SizedBox(width: 10),
-      Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900,
-          color: _P.inkDark, letterSpacing: -0.2)),
+      Text(title, style: const TextStyle(fontSize: 18,
+        fontWeight: FontWeight.w900, color: _P.inkDark, letterSpacing: -0.2)),
     ]);
   }
 
@@ -692,48 +696,47 @@ class _TopicDetailPageState extends State<TopicDetailPage>
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(items.length, (index) {
-          final isActive = _bottomNavIndex == index;
+        children: List.generate(items.length, (i) {
+          final active = _bottomNavIndex == i;
           return GestureDetector(
             onTap: () {
-              if (index == 1) Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
-              else if (index == 2) Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryPage()));
-              else if (index == 3) Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
-              else setState(() => _bottomNavIndex = index);
+              if (i == 1) Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()));
+              else if (i == 2) Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const HistoryPage()));
+              else if (i == 3) Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ProfilePage()));
+              else setState(() => _bottomNavIndex = i);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutBack,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isActive ? _P.lavLight : Colors.transparent,
+                color: active ? _P.lavLight : Colors.transparent,
                 borderRadius: BorderRadius.circular(14)),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                AnimatedScale(scale: isActive ? 1.22 : 1.0,
+                AnimatedScale(scale: active ? 1.22 : 1.0,
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutBack,
-                  child: Icon(items[index]['icon'] as IconData, size: 24,
-                    color: isActive ? _P.inkDark : _P.inkLight)),
+                  child: Icon(items[i]['icon'] as IconData, size: 24,
+                    color: active ? _P.inkDark : _P.inkLight)),
                 const SizedBox(height: 3),
-                Text(items[index]['label'] as String,
+                Text(items[i]['label'] as String,
                   style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
-                    color: isActive ? _P.inkDark : _P.inkLight)),
-              ]),
-            ),
-          );
-        }),
-      ),
-    );
+                    color: active ? _P.inkDark : _P.inkLight)),
+              ])));
+        })));
   }
 }
 
-// =============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
 // ADD NOTE BUTTON
-// =============================================================================
-class _AddNoteButton extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+class _AddNoteBtn extends StatelessWidget {
   final bool isOpen;
   final VoidCallback onTap;
-  const _AddNoteButton({required this.isOpen, required this.onTap});
+  const _AddNoteBtn({required this.isOpen, required this.onTap});
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -757,53 +760,48 @@ class _AddNoteButton extends StatelessWidget {
           Text(isOpen ? 'Cancel' : 'Add Note',
             style: const TextStyle(color: _P.inkDark, fontSize: 12,
               fontWeight: FontWeight.w800)),
-        ]),
-      ),
-    );
+        ])));
   }
 }
 
-// =============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
 // SAVE NOTE BUTTON
-// =============================================================================
-class _SaveNoteButton extends StatefulWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+class _SaveNoteBtn extends StatefulWidget {
   final VoidCallback onTap;
-  const _SaveNoteButton({required this.onTap});
-  @override State<_SaveNoteButton> createState() => _SaveNoteButtonState();
+  const _SaveNoteBtn({required this.onTap});
+  @override State<_SaveNoteBtn> createState() => _SaveNoteBtnState();
 }
-class _SaveNoteButtonState extends State<_SaveNoteButton>
+class _SaveNoteBtnState extends State<_SaveNoteBtn>
     with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double>   _scale;
+  late AnimationController _c;
+  late Animation<double>   _s;
   @override void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this,
+    _c = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 120));
-    _scale = Tween<double>(begin: 1.0, end: 0.88)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    _s = Tween<double>(begin: 1.0, end: 0.88)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
   }
-  @override void dispose() { _ctrl.dispose(); super.dispose(); }
-  Future<void> _onTap() async {
-    await _ctrl.forward(); await _ctrl.reverse(); widget.onTap();
+  @override void dispose() { _c.dispose(); super.dispose(); }
+  Future<void> _tap() async {
+    await _c.forward(); await _c.reverse(); widget.onTap();
   }
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _onTap,
-      child: ScaleTransition(scale: _scale,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [_P.lavMid, _P.lavDark]),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: _P.lavDark.withOpacity(0.35),
-                blurRadius: 8, offset: const Offset(0, 3))]),
-          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('💾', style: TextStyle(fontSize: 14)),
-            SizedBox(width: 6),
-            Text('Save Note', style: TextStyle(color: _P.inkDark,
-                fontWeight: FontWeight.w800, fontSize: 13)),
-          ]))),
-    );
-  }
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: _tap,
+    child: ScaleTransition(scale: _s,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [_P.lavMid, _P.lavDark]),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: _P.lavDark.withOpacity(0.35),
+              blurRadius: 8, offset: const Offset(0, 3))]),
+        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+          Text('💾', style: TextStyle(fontSize: 14)),
+          SizedBox(width: 6),
+          Text('Save Note', style: TextStyle(color: _P.inkDark,
+              fontWeight: FontWeight.w800, fontSize: 13)),
+        ]))));
 }
