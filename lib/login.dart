@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'selection1.dart';
+import 'package:hive/hive.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,10 +13,10 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  static const Color purpleDark   = Color(0xFF5B1F7A);
-  static const Color purpleMid    = Color(0xFF7B2FA0);
+  static const Color purpleDark = Color(0xFF5B1F7A);
+  static const Color purpleMid = Color(0xFF7B2FA0);
   static const Color purpleAccent = Color(0xFF9B4FBF);
-  static const Color bgColor      = Color(0xFFF4F1EE);
+  static const Color bgColor = Color(0xFFF4F1EE);
 
   @override
   void dispose() {
@@ -78,7 +79,10 @@ class _TabletLayout extends StatelessWidget {
             flex: 5,
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 52, vertical: 40),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 52,
+                  vertical: 40,
+                ),
                 child: _LoginForm(
                   usernameController: usernameController,
                   passwordController: passwordController,
@@ -198,8 +202,8 @@ class _PurplePanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.13),
               borderRadius: const BorderRadius.only(
-                topLeft:     Radius.circular(140),
-                bottomLeft:  Radius.circular(110),
+                topLeft: Radius.circular(140),
+                bottomLeft: Radius.circular(110),
                 bottomRight: Radius.circular(70),
               ),
             ),
@@ -323,10 +327,36 @@ class _LoginForm extends StatelessWidget {
           height: 50,
           child: ElevatedButton(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const Selection1Page()),
-              );
+              var box = Hive.box('userBox');
+
+              String storedUser = box.get('username', defaultValue: "");
+              String storedPass = box.get('password', defaultValue: "");
+
+              String enteredUser = usernameController.text;
+              String enteredPass = passwordController.text;
+
+              if (storedUser.isEmpty) {
+                box.put('username', enteredUser);
+                box.put('password', enteredPass);
+                box.put('isLoggedIn', true);
+
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const Selection1Page()),
+                );
+              } else if (enteredUser == storedUser &&
+                  enteredPass == storedPass) {
+                box.put('isLoggedIn', true);
+
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const Selection1Page()),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Invalid Username or Password")),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: purpleDark,

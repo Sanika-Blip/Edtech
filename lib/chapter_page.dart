@@ -4,9 +4,12 @@ import 'topic_map_page.dart';
 import 'search_page.dart';
 import 'history_page.dart';
 import 'profile_page.dart';
+import 'models/curriculum_model.dart';
+import 'services/session_service.dart';
+import 'data/curriculum_data.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared pastel palette (mirrors home1_page.dart)
+// Shared pastel palette
 // ─────────────────────────────────────────────────────────────────────────────
 class _C {
   static const bg       = Color(0xFFF7F4FB);
@@ -36,25 +39,41 @@ class _C {
   static const roseB    = Color(0xFFEAADB8);
 }
 
-// Per-subject: header gradient pair + card accent pair + emoji
 const _subjectMeta = <String, Map<String, dynamic>>{
-  'Maths':     {'h1': _C.lavMid,   'h2': _C.lavDark,  'c1': _C.lavLight,  'c2': _C.lavMid,   'emoji': '🔢'},
-  'Science':   {'h1': _C.mintA,    'h2': _C.mintB,    'c1': _C.mintA,     'c2': _C.mintB,    'emoji': '🧪'},
-  'English':   {'h1': _C.blushA,   'h2': _C.blushB,   'c1': _C.blushA,    'c2': _C.blushB,   'emoji': '📖'},
-  'History':   {'h1': _C.skyA,     'h2': _C.skyB,     'c1': _C.skyA,      'c2': _C.skyB,     'emoji': '🏛️'},
-  'Geography': {'h1': _C.peachA,   'h2': _C.peachB,   'c1': _C.peachA,    'c2': _C.peachB,   'emoji': '🌍'},
-  'Physics':   {'h1': _C.lemonA,   'h2': _C.lemonB,   'c1': _C.lemonA,    'c2': _C.lemonB,   'emoji': '⚡'},
-  'Chemistry': {'h1': _C.lilacA,   'h2': _C.lilacB,   'c1': _C.lilacA,    'c2': _C.lilacB,   'emoji': '🧬'},
-  'Biology':   {'h1': _C.sagA,     'h2': _C.sagB,     'c1': _C.sagA,      'c2': _C.sagB,     'emoji': '🌿'},
-  'Computer':  {'h1': _C.powderA,  'h2': _C.powderB,  'c1': _C.powderA,   'c2': _C.powderB,  'emoji': '💻'},
+  'Maths':          {'h1': _C.lavMid,  'h2': _C.lavDark, 'c1': _C.lavLight, 'c2': _C.lavMid,  'emoji': '🔢'},
+  'Science':        {'h1': _C.mintA,   'h2': _C.mintB,   'c1': _C.mintA,    'c2': _C.mintB,   'emoji': '🧪'},
+  'English':        {'h1': _C.blushA,  'h2': _C.blushB,  'c1': _C.blushA,   'c2': _C.blushB,  'emoji': '📖'},
+  'History':        {'h1': _C.skyA,    'h2': _C.skyB,    'c1': _C.skyA,     'c2': _C.skyB,    'emoji': '🏛️'},
+  'Geography':      {'h1': _C.peachA,  'h2': _C.peachB,  'c1': _C.peachA,   'c2': _C.peachB,  'emoji': '🌍'},
+  'Physics':        {'h1': _C.lemonA,  'h2': _C.lemonB,  'c1': _C.lemonA,   'c2': _C.lemonB,  'emoji': '⚡'},
+  'Chemistry':      {'h1': _C.lilacA,  'h2': _C.lilacB,  'c1': _C.lilacA,   'c2': _C.lilacB,  'emoji': '🧬'},
+  'Biology':        {'h1': _C.sagA,    'h2': _C.sagB,    'c1': _C.sagA,     'c2': _C.sagB,    'emoji': '🌿'},
+  'Computer':       {'h1': _C.powderA, 'h2': _C.powderB, 'c1': _C.powderA,  'c2': _C.powderB, 'emoji': '💻'},
+  'Maths I':        {'h1': _C.lavMid,  'h2': _C.lavDark, 'c1': _C.lavLight, 'c2': _C.lavMid,  'emoji': '🔢'},
+  'Maths II':       {'h1': _C.skyA,    'h2': _C.skyB,    'c1': _C.skyA,     'c2': _C.skyB,    'emoji': '📐'},
+  'Science I':      {'h1': _C.mintA,   'h2': _C.mintB,   'c1': _C.mintA,    'c2': _C.mintB,   'emoji': '🧪'},
+  'Science II':     {'h1': _C.sagA,    'h2': _C.sagB,    'c1': _C.sagA,     'c2': _C.sagB,    'emoji': '🌿'},
+  'Social Science': {'h1': _C.peachA,  'h2': _C.peachB,  'c1': _C.peachA,   'c2': _C.peachB,  'emoji': '🏛️'},
+  'Hindi':          {'h1': _C.roseA,   'h2': _C.roseB,   'c1': _C.roseA,    'c2': _C.roseB,   'emoji': '🔤'},
+  'EVS':            {'h1': _C.sagA,    'h2': _C.sagB,     'c1': _C.sagA,    'c2': _C.sagB,    'emoji': '🌍'},
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHAPTER PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 class ChapterPage extends StatefulWidget {
-  final String subjectName;
-  const ChapterPage({super.key, required this.subjectName});
+  final String        subjectName;
+  final List<Chapter>? chapters;
+  final String?       board;
+  final String?       className;
+
+  const ChapterPage({
+    super.key,
+    required this.subjectName,
+    this.chapters,
+    this.board,
+    this.className,
+  });
 
   @override
   State<ChapterPage> createState() => _ChapterPageState();
@@ -64,119 +83,85 @@ class _ChapterPageState extends State<ChapterPage>
     with TickerProviderStateMixin {
   int _bottomNavIndex = 0;
 
-  // Animation controllers
-  late AnimationController _headerCtrl;   // header fade + slide
-  late AnimationController _floatCtrl;    // floating particles
-  late AnimationController _listCtrl;     // staggered card entrance
-  late AnimationController _pulseCtrl;    // play-button pulse
+  late final List<Chapter> _chapters;
+  late final String        _board;
+  late final String        _className;
+
+  late AnimationController _headerCtrl;
+  late AnimationController _floatCtrl;
+  late AnimationController _listCtrl;
+  late AnimationController _pulseCtrl;
 
   late Animation<double> _headerFade;
   late Animation<Offset> _headerSlide;
   late Animation<double> _pulseAnim;
 
-  // Subject data
-  final Map<String, List<Map<String, String>>> _subjectChapters = {
-    'Maths': [
-      {'title': 'Chapter 1: Basic Numbers',       'subtitle': 'Integers, fractions & decimals'},
-      {'title': 'Chapter 2: Algebra Basics',      'subtitle': 'Variables, expressions & equations'},
-      {'title': 'Chapter 3: Geometry',            'subtitle': 'Shapes, angles & theorems'},
-      {'title': 'Chapter 4: Trigonometry',        'subtitle': 'Sin, cos, tan & identities'},
-      {'title': 'Chapter 5: Statistics',          'subtitle': 'Mean, median, mode & graphs'},
-    ],
-    'Science': [
-      {'title': 'Chapter 1: Matter & Materials',  'subtitle': 'States of matter & properties'},
-      {'title': 'Chapter 2: Forces & Motion',     'subtitle': "Newton's laws & energy"},
-      {'title': 'Chapter 3: Light & Sound',       'subtitle': 'Waves, reflection & refraction'},
-      {'title': 'Chapter 4: Living World',        'subtitle': 'Cell structure & life processes'},
-      {'title': 'Chapter 5: Environment',         'subtitle': 'Ecosystem & conservation'},
-    ],
-    'English': [
-      {'title': 'Chapter 1: Grammar Basics',      'subtitle': 'Nouns, verbs & adjectives'},
-      {'title': 'Chapter 2: Reading Skills',      'subtitle': 'Comprehension & inference'},
-      {'title': 'Chapter 3: Writing Skills',      'subtitle': 'Essays, letters & reports'},
-      {'title': 'Chapter 4: Literature',          'subtitle': 'Prose, poetry & drama'},
-      {'title': 'Chapter 5: Vocabulary',          'subtitle': 'Word formation & synonyms'},
-    ],
-    'History': [
-      {'title': 'Chapter 1: Ancient Civilizations','subtitle': 'Indus Valley & Mesopotamia'},
-      {'title': 'Chapter 2: Medieval Period',     'subtitle': 'Mughal empire & crusades'},
-      {'title': 'Chapter 3: Colonial Era',        'subtitle': 'British rule & independence'},
-      {'title': 'Chapter 4: World Wars',          'subtitle': 'WWI, WWII & consequences'},
-      {'title': 'Chapter 5: Modern India',        'subtitle': 'Post-independence developments'},
-    ],
-    'Geography': [
-      {'title': 'Chapter 1: Earth & Maps',        'subtitle': 'Latitude, longitude & projections'},
-      {'title': 'Chapter 2: Landforms',           'subtitle': 'Mountains, plains & plateaus'},
-      {'title': 'Chapter 3: Climate',             'subtitle': 'Weather patterns & seasons'},
-      {'title': 'Chapter 4: Resources',           'subtitle': 'Natural resources & distribution'},
-      {'title': 'Chapter 5: Population',          'subtitle': 'Demographics & urbanisation'},
-    ],
-    'Physics': [
-      {'title': 'Chapter 1: Mechanics',           'subtitle': 'Motion, force & work'},
-      {'title': 'Chapter 2: Thermodynamics',      'subtitle': 'Heat, temperature & laws'},
-      {'title': 'Chapter 3: Electrostatics',      'subtitle': 'Charge, field & potential'},
-      {'title': 'Chapter 4: Optics',              'subtitle': 'Lenses, mirrors & light'},
-      {'title': 'Chapter 5: Modern Physics',      'subtitle': 'Atoms, nuclei & radiation'},
-    ],
-    'Chemistry': [
-      {'title': 'Chapter 1: Atomic Structure',    'subtitle': 'Protons, electrons & orbitals'},
-      {'title': 'Chapter 2: Periodic Table',      'subtitle': 'Elements, groups & periods'},
-      {'title': 'Chapter 3: Chemical Bonding',    'subtitle': 'Ionic, covalent & metallic'},
-      {'title': 'Chapter 4: Reactions',           'subtitle': 'Acids, bases & redox'},
-      {'title': 'Chapter 5: Organic Chemistry',   'subtitle': 'Hydrocarbons & functional groups'},
-    ],
-    'Biology': [
-      {'title': 'Chapter 1: Cell Biology',        'subtitle': 'Cell structure & organelles'},
-      {'title': 'Chapter 2: Genetics',            'subtitle': 'DNA, genes & heredity'},
-      {'title': 'Chapter 3: Human Body',          'subtitle': 'Organ systems & functions'},
-      {'title': 'Chapter 4: Plant Kingdom',       'subtitle': 'Photosynthesis & reproduction'},
-      {'title': 'Chapter 5: Ecology',             'subtitle': 'Food chains & biodiversity'},
-    ],
-    'Computer': [
-      {'title': 'Chapter 1: Basics of Computing', 'subtitle': 'Hardware, software & OS'},
-      {'title': 'Chapter 2: Programming',         'subtitle': 'Algorithms & flowcharts'},
-      {'title': 'Chapter 3: Internet & Web',      'subtitle': 'Networking & web basics'},
-      {'title': 'Chapter 4: Database',            'subtitle': 'SQL, tables & queries'},
-      {'title': 'Chapter 5: Cyber Security',      'subtitle': 'Threats, safety & ethics'},
-    ],
-  };
-
-  List<Map<String, String>> get _chapters =>
-      _subjectChapters[widget.subjectName] ?? _subjectChapters['Maths']!;
-
   Map<String, dynamic> get _meta =>
       _subjectMeta[widget.subjectName] ?? _subjectMeta['Maths']!;
+
+  // ── A chapter is "done" when ALL its topics are completed ─────────────────
+  bool _isChapterDone(Chapter chapter) {
+    if (chapter.topics.isEmpty) return false;
+    for (int i = 0; i < chapter.topics.length; i++) {
+      if (!SessionService.instance.isTopicComplete(
+        board:       _board,
+        className:   _className,
+        subjectName: widget.subjectName,
+        chapterId:   chapter.id,
+        topicIndex:  i,
+      )) return false;
+    }
+    return true;
+  }
+
+  int get _doneCount => _chapters.where(_isChapterDone).length;
 
   @override
   void initState() {
     super.initState();
 
-    // Header entrance
+    final session = SessionService.instance.getSession();
+    _board     = widget.board     ?? session?.board     ?? 'CBSE';
+    _className = widget.className ?? session?.className ?? 'Class 10';
+
+    if (widget.chapters != null && widget.chapters!.isNotEmpty) {
+      _chapters = widget.chapters!;
+    } else {
+      final subjects = CurriculumData.getSubjects(_board, _className);
+      final match    = subjects.where((s) => s.name == widget.subjectName).toList();
+      _chapters = match.isNotEmpty ? match.first.chapters : _fallbackChapters;
+    }
+
     _headerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 650))
       ..forward();
     _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
-    _headerSlide = Tween<Offset>(
-            begin: const Offset(0, -0.25), end: Offset.zero)
+    _headerSlide = Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
         .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
 
-    // Floating particles
     _floatCtrl = AnimationController(
         vsync: this, duration: const Duration(seconds: 3))
       ..repeat(reverse: true);
 
-    // Staggered card list entrance
     _listCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 900))
       ..forward();
 
-    // Pulse for play button
     _pulseCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 900))
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.92, end: 1.08)
         .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
   }
+
+  List<Chapter> get _fallbackChapters => [
+    Chapter(id: 'f1', title: 'Chapter 1: Introduction',
+        description: 'Getting started.', topics: ['Basics', 'Overview']),
+    Chapter(id: 'f2', title: 'Chapter 2: Core Concepts',
+        description: 'Key ideas.', topics: ['Concepts', 'Examples']),
+    Chapter(id: 'f3', title: 'Chapter 3: Practice',
+        description: 'Exercises.', topics: ['Problems', 'Solutions']),
+  ];
 
   @override
   void dispose() {
@@ -187,7 +172,6 @@ class _ChapterPageState extends State<ChapterPage>
     super.dispose();
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final Color h1 = _meta['h1'] as Color;
@@ -198,7 +182,6 @@ class _ChapterPageState extends State<ChapterPage>
       body: SafeArea(
         child: Column(
           children: [
-            // ── Animated header bar ──────────────────────────────────
             FadeTransition(
               opacity: _headerFade,
               child: SlideTransition(
@@ -206,21 +189,16 @@ class _ChapterPageState extends State<ChapterPage>
                 child: _buildHeader(h1, h2),
               ),
             ),
-
-            // ── Content ──────────────────────────────────────────────
             Expanded(
               child: Stack(
                 children: [
-                  // Background blobs
                   _buildBgBlobs(h1, h2),
-                  // Floating particles
                   ..._buildParticles(),
-                  // Chapter cards
+                  // ── Refresh list when returning from TopicMapPage ──────────
                   ListView.builder(
                     padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
                     itemCount: _chapters.length,
                     itemBuilder: (ctx, i) {
-                      // Staggered slide-up per card
                       final start = i * 0.15;
                       final end   = (start + 0.55).clamp(0.0, 1.0);
                       final anim  = CurvedAnimation(
@@ -233,15 +211,13 @@ class _ChapterPageState extends State<ChapterPage>
                           opacity: anim,
                           child: SlideTransition(
                             position: Tween<Offset>(
-                              begin: const Offset(0, 0.35),
-                              end: Offset.zero,
+                              begin: const Offset(0, 0.35), end: Offset.zero,
                             ).animate(anim),
                             child: child,
                           ),
                         ),
                         child: _ChapterCard(
-                          chapterTitle: _chapters[i]['title']!,
-                          subtitle:     _chapters[i]['subtitle']!,
+                          chapter:      _chapters[i],
                           index:        i,
                           colorA:       _meta['c1'] as Color,
                           colorB:       _meta['c2'] as Color,
@@ -249,6 +225,12 @@ class _ChapterPageState extends State<ChapterPage>
                           headerB:      h2,
                           pulseAnim:    _pulseAnim,
                           subjectEmoji: _meta['emoji'] as String,
+                          subjectName:  widget.subjectName,
+                          board:        _board,
+                          className:    _className,
+                          isCompleted:  _isChapterDone(_chapters[i]),
+                          // Called when TopicMapPage pops — refresh completion state
+                          onReturn: () => setState(() {}),
                         ),
                       );
                     },
@@ -256,8 +238,6 @@ class _ChapterPageState extends State<ChapterPage>
                 ],
               ),
             ),
-
-            // ── Bottom nav ────────────────────────────────────────────
             _buildBottomNav(),
           ],
         ),
@@ -265,174 +245,114 @@ class _ChapterPageState extends State<ChapterPage>
     );
   }
 
-  // ── Header ─────────────────────────────────────────────────────────────────
   Widget _buildHeader(Color h1, Color h2) {
+    final done     = _doneCount;
+    final progress = _chapters.isEmpty ? 0.0 : done / _chapters.length;
+
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [h1, h2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: LinearGradient(colors: [h1, h2],
+          begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: const BorderRadius.only(
-          bottomLeft:  Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: h2.withOpacity(0.45),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
+          bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+        boxShadow: [BoxShadow(color: h2.withOpacity(0.45),
+            blurRadius: 18, offset: const Offset(0, 6))],
       ),
-      child: Stack(
-        children: [
-          // Decorative blobs inside header
-          Positioned(
-            top: -18, right: -18,
-            child: Container(
-              width: 110, height: 110,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -14, left: 24,
-            child: Container(
-              width: 70, height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.09),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            top: 10, right: 80,
-            child: Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          // Content row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 8, 16, 16),
-            child: Row(
-              children: [
-                // Back button
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: _C.inkDark, size: 20),
-                  onPressed: () => Navigator.maybePop(context),
-                ),
-                const SizedBox(width: 4),
-                // Subject emoji + name
-                Text(
-                  _meta['emoji'] as String,
-                  style: const TextStyle(fontSize: 26),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.subjectName,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: _C.inkDark,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      Text(
-                        '${_chapters.length} Chapters',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _C.inkMid,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Chapter count badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.menu_book_rounded,
-                          size: 14, color: _C.inkDark),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${_chapters.length}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: _C.inkDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Background blobs ───────────────────────────────────────────────────────
-  Widget _buildBgBlobs(Color h1, Color h2) {
-    return IgnorePointer(
       child: Stack(children: [
-        Positioned(
-          top: 20, right: -50,
-          child: Container(
-            width: 160, height: 160,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: h1.withOpacity(0.25),
+        Positioned(top: -18, right: -18,
+          child: Container(width: 110, height: 110,
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.12),
+                shape: BoxShape.circle))),
+        Positioned(bottom: -14, left: 24,
+          child: Container(width: 70, height: 70,
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.09),
+                shape: BoxShape.circle))),
+        Positioned(top: 10, right: 80,
+          child: Container(width: 40, height: 40,
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.07),
+                shape: BoxShape.circle))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(6, 8, 16, 12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: _C.inkDark, size: 20),
+                onPressed: () => Navigator.maybePop(context)),
+              const SizedBox(width: 4),
+              Text(_meta['emoji'] as String,
+                  style: const TextStyle(fontSize: 26)),
+              const SizedBox(width: 10),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.subjectName,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900,
+                      color: _C.inkDark, letterSpacing: 0.2)),
+                  Text('$_board · $_className',
+                    style: const TextStyle(fontSize: 10,
+                      fontWeight: FontWeight.w600, color: _C.inkMid)),
+                ],
+              )),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.menu_book_rounded, size: 14, color: _C.inkDark),
+                  const SizedBox(width: 4),
+                  Text('${_chapters.length}',
+                    style: const TextStyle(fontSize: 13,
+                      fontWeight: FontWeight.w800, color: _C.inkDark)),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text('$done / ${_chapters.length} completed',
+                    style: const TextStyle(fontSize: 10,
+                      fontWeight: FontWeight.w600, color: _C.inkMid)),
+                  Text('${(progress * 100).round()}%',
+                    style: const TextStyle(fontSize: 10,
+                      fontWeight: FontWeight.w800, color: _C.inkDark)),
+                ]),
+                const SizedBox(height: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white.withOpacity(0.35),
+                    valueColor: const AlwaysStoppedAnimation<Color>(_C.inkDark),
+                    minHeight: 6)),
+              ]),
             ),
-          ),
-        ),
-        Positioned(
-          top: 260, left: -55,
-          child: Container(
-            width: 140, height: 140,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _C.mintA.withOpacity(0.3),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 60, right: -35,
-          child: Container(
-            width: 130, height: 130,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _C.blushA.withOpacity(0.25),
-            ),
-          ),
+            const SizedBox(height: 4),
+          ]),
         ),
       ]),
     );
   }
 
-  // ── Floating particles ─────────────────────────────────────────────────────
+  Widget _buildBgBlobs(Color h1, Color h2) {
+    return IgnorePointer(child: Stack(children: [
+      Positioned(top: 20, right: -50,
+        child: Container(width: 160, height: 160,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: h1.withOpacity(0.25)))),
+      Positioned(top: 260, left: -55,
+        child: Container(width: 140, height: 140,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: _C.mintA.withOpacity(0.3)))),
+      Positioned(bottom: 60, right: -35,
+        child: Container(width: 130, height: 130,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: _C.blushA.withOpacity(0.25)))),
+    ]));
+  }
+
   List<Widget> _buildParticles() {
     final items = [
       {'e': '✨', 'lf': 0.07, 'tf': 0.05, 'ph': 0.0},
@@ -441,30 +361,21 @@ class _ChapterPageState extends State<ChapterPage>
       {'e': '💫', 'lf': 0.04, 'tf': 0.52, 'ph': 0.4},
       {'e': '🎀', 'lf': 0.80, 'tf': 0.65, 'ph': 0.9},
     ];
-    return items.map((item) {
-      return AnimatedBuilder(
-        animation: _floatCtrl,
-        builder: (ctx, _) {
-          final sw = MediaQuery.of(ctx).size.width;
-          final t  = (_floatCtrl.value + (item['ph'] as double)) % 1.0;
-          final dy = math.sin(t * math.pi) * 9.0;
-          return Positioned(
-            left: sw  * (item['lf'] as double),
-            top: 620  * (item['tf'] as double) + dy,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.4,
-                child: Text(item['e'] as String,
-                    style: const TextStyle(fontSize: 17)),
-              ),
-            ),
-          );
-        },
-      );
-    }).toList();
+    return items.map((item) => AnimatedBuilder(
+      animation: _floatCtrl,
+      builder: (ctx, _) {
+        final sw = MediaQuery.of(ctx).size.width;
+        final t  = (_floatCtrl.value + (item['ph'] as double)) % 1.0;
+        final dy = math.sin(t * math.pi) * 9.0;
+        return Positioned(
+          left: sw  * (item['lf'] as double),
+          top:  620 * (item['tf'] as double) + dy,
+          child: IgnorePointer(child: Opacity(opacity: 0.4,
+            child: Text(item['e'] as String,
+                style: const TextStyle(fontSize: 17)))));
+      })).toList();
   }
 
-  // ── Bottom navigation bar (identical style to home1_page) ─────────────────
   Widget _buildBottomNav() {
     final items = [
       {'icon': Icons.home_rounded,        'label': 'Home'},
@@ -473,18 +384,10 @@ class _ChapterPageState extends State<ChapterPage>
       {'icon': Icons.person_rounded,      'label': 'Profile'},
       {'icon': Icons.settings_rounded,    'label': 'Settings'},
     ];
-
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: _C.lavMid.withOpacity(0.2),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white,
+        boxShadow: [BoxShadow(color: _C.lavMid.withOpacity(0.2),
+            blurRadius: 16, offset: const Offset(0, -4))]),
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -492,65 +395,32 @@ class _ChapterPageState extends State<ChapterPage>
           final isActive = _bottomNavIndex == index;
           return GestureDetector(
             onTap: () {
-              if (index == 1) {
-                // ── Search ──────────────────────────────────────────
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const SearchPage()),
-                );
-              } else if (index == 2) {
-                // ── History ─────────────────────────────────────────
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const HistoryPage()),
-                );
-              } else if (index == 3) {
-                // ── Profile ─────────────────────────────────────────
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const ProfilePage()),
-                );
-              } else {
-                // ── Home (0) / Settings (4) ──────────────────────────
-                setState(() => _bottomNavIndex = index);
-              }
+              if (index == 1) Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()));
+              else if (index == 2) Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const HistoryPage()));
+              else if (index == 3) Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ProfilePage()));
+              else setState(() => _bottomNavIndex = index);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutBack,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: isActive ? _C.lavLight : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedScale(
-                    scale: isActive ? 1.22 : 1.0,
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutBack,
-                    child: Icon(
-                      items[index]['icon'] as IconData,
-                      size: 24,
-                      color: isActive ? _C.inkDark : _C.inkLight,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    items[index]['label'] as String,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: isActive ? _C.inkDark : _C.inkLight,
-                    ),
-                  ),
-                ],
-              ),
+                borderRadius: BorderRadius.circular(14)),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                AnimatedScale(scale: isActive ? 1.22 : 1.0,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  child: Icon(items[index]['icon'] as IconData, size: 24,
+                    color: isActive ? _C.inkDark : _C.inkLight)),
+                const SizedBox(height: 3),
+                Text(items[index]['label'] as String,
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
+                    color: isActive ? _C.inkDark : _C.inkLight)),
+              ]),
             ),
           );
         }),
@@ -563,17 +433,20 @@ class _ChapterPageState extends State<ChapterPage>
 // CHAPTER CARD
 // =============================================================================
 class _ChapterCard extends StatefulWidget {
-  final String chapterTitle;
-  final String subtitle;
-  final int    index;
-  final Color  colorA, colorB;   // card accent gradient
-  final Color  headerA, headerB; // thumbnail gradient
+  final Chapter  chapter;
+  final int      index;
+  final Color    colorA, colorB;
+  final Color    headerA, headerB;
   final Animation<double> pulseAnim;
-  final String subjectEmoji;
+  final String   subjectEmoji;
+  final String   subjectName;   // ← needed for collision-proof topic key
+  final String   board;
+  final String   className;
+  final bool     isCompleted;   // derived: all topics watched
+  final VoidCallback onReturn;  // called on Navigator.pop to refresh parent
 
   const _ChapterCard({
-    required this.chapterTitle,
-    required this.subtitle,
+    required this.chapter,
     required this.index,
     required this.colorA,
     required this.colorB,
@@ -581,6 +454,11 @@ class _ChapterCard extends StatefulWidget {
     required this.headerB,
     required this.pulseAnim,
     required this.subjectEmoji,
+    required this.subjectName,
+    required this.board,
+    required this.className,
+    required this.isCompleted,
+    required this.onReturn,
   });
 
   @override
@@ -593,286 +471,203 @@ class _ChapterCardState extends State<_ChapterCard> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
+      onTapDown:   (_) => setState(() => _pressed = true),
+      onTapUp:     (_) => setState(() => _pressed = false),
+      onTapCancel: ()  => setState(() => _pressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutBack,
         margin: const EdgeInsets.only(bottom: 18),
-        transform: Matrix4.identity()
-          ..translate(0.0, _pressed ? 2.0 : 0.0),
+        transform: Matrix4.identity()..translate(0.0, _pressed ? 2.0 : 0.0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: widget.isCompleted ? const Color(0xFFEBE0FA) : Colors.white,
           borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: widget.colorB.withOpacity(_pressed ? 0.15 : 0.30),
-              blurRadius: _pressed ? 6 : 16,
-              offset: Offset(0, _pressed ? 2 : 6),
-            ),
-          ],
+          border: widget.isCompleted
+              ? Border.all(color: const Color(0xFF9B6FBF), width: 1.5)
+              : null,
+          boxShadow: [BoxShadow(
+            color: widget.colorB.withOpacity(_pressed ? 0.15 : 0.30),
+            blurRadius: _pressed ? 6 : 16,
+            offset: Offset(0, _pressed ? 2 : 6))],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Thumbnail ───────────────────────────────────────────
-            _buildThumbnail(),
-            // ── Info + Start button ─────────────────────────────────
-            _buildFooter(context),
-          ],
-        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _buildThumbnail(),
+          _buildFooter(context),
+        ]),
       ),
     );
   }
 
-  // ── Thumbnail ──────────────────────────────────────────────────────────────
   Widget _buildThumbnail() {
     return ClipRRect(
       borderRadius: const BorderRadius.only(
-        topLeft:  Radius.circular(22),
-        topRight: Radius.circular(22),
-      ),
+        topLeft: Radius.circular(22), topRight: Radius.circular(22)),
       child: Container(
-        width: double.infinity,
-        height: 155,
+        width: double.infinity, height: 155,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              widget.headerA,
-              widget.headerB,
-              widget.colorA.withOpacity(0.7),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Stack(
-          children: [
-            // Decorative blobs
-            Positioned(
-              right: -22, top: -22,
-              child: Container(
-                width: 110, height: 110,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.10),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              left: -10, bottom: -12,
-              child: Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.07),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              right: 50, bottom: -14,
-              child: Container(
-                width: 55, height: 55,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.07),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
+            colors: [widget.headerA, widget.headerB, widget.colorA.withOpacity(0.7)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight)),
+        child: Stack(children: [
+          Positioned(right: -22, top: -22,
+            child: Container(width: 110, height: 110,
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.10),
+                  shape: BoxShape.circle))),
+          Positioned(left: -10, bottom: -12,
+            child: Container(width: 80, height: 80,
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.07),
+                  shape: BoxShape.circle))),
+          Positioned(right: 50, bottom: -14,
+            child: Container(width: 55, height: 55,
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.07),
+                  shape: BoxShape.circle))),
 
-            // Chapter badge (top-left)
-            Positioned(
-              top: 12, left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+          // Chapter badge
+          Positioned(top: 12, left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.55),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.7), width: 1)),
+              child: Text('Ch. ${widget.index + 1}',
+                style: const TextStyle(color: _C.inkDark, fontSize: 11,
+                  fontWeight: FontWeight.w800)))),
+
+          // Subject emoji
+          Positioned(top: 12, right: 12,
+            child: Container(width: 36, height: 36,
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.5),
+                  shape: BoxShape.circle),
+              child: Center(child: Text(widget.subjectEmoji,
+                  style: const TextStyle(fontSize: 18))))),
+
+          // ✓ tick when all topics completed — NO manual toggle button
+          if (widget.isCompleted)
+            Positioned(top: 12, right: 56,
+              child: Container(width: 30, height: 30,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.55),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: Colors.white.withOpacity(0.7), width: 1),
-                ),
-                child: Text(
-                  'Ch. ${widget.index + 1}',
-                  style: const TextStyle(
-                    color: _C.inkDark,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
+                  color: const Color(0xFF5B1F7A).withOpacity(0.85),
+                  shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded,
+                    color: Colors.white, size: 16))),
 
-            // Subject emoji (top-right)
-            Positioned(
-              top: 12, right: 12,
-              child: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(widget.subjectEmoji,
-                      style: const TextStyle(fontSize: 18)),
-                ),
-              ),
-            ),
+          // Pulsing play button
+          Center(child: AnimatedBuilder(
+            animation: widget.pulseAnim,
+            builder: (_, child) => Transform.scale(
+                scale: widget.pulseAnim.value, child: child),
+            child: Container(
+              width: 54, height: 54,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.80),
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: widget.headerB.withOpacity(0.4),
+                    blurRadius: 16, spreadRadius: 2)]),
+              child: const Icon(Icons.play_arrow_rounded,
+                  color: _C.inkDark, size: 30)))),
 
-            // Pulsing play button (centre)
-            Center(
-              child: AnimatedBuilder(
-                animation: widget.pulseAnim,
-                builder: (_, child) => Transform.scale(
-                  scale: widget.pulseAnim.value,
-                  child: child,
-                ),
-                child: Container(
-                  width: 54, height: 54,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.80),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: widget.headerB.withOpacity(0.4),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: _C.inkDark,
-                    size: 30,
-                  ),
-                ),
-              ),
-            ),
-
-            // Progress dots (bottom-right)
-            Positioned(
-              bottom: 12, right: 14,
-              child: Row(
-                children: List.generate(3, (i) => Container(
-                  width: 6, height: 6,
-                  margin: const EdgeInsets.only(left: 4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: i == 0
-                        ? Colors.white.withOpacity(0.9)
-                        : Colors.white.withOpacity(0.35),
-                  ),
-                )),
-              ),
-            ),
-          ],
-        ),
+          // Progress dots
+          Positioned(bottom: 12, right: 14,
+            child: Row(children: List.generate(3, (i) => Container(
+              width: 6, height: 6,
+              margin: const EdgeInsets.only(left: 4),
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                color: i == 0
+                    ? Colors.white.withOpacity(0.9)
+                    : Colors.white.withOpacity(0.35)))))),
+        ]),
       ),
     );
   }
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
   Widget _buildFooter(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 13, 16, 15),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Left: accent bar + text
-          Container(
-            width: 4, height: 38,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [widget.colorA, widget.colorB],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.chapterTitle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: _C.inkDark,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  widget.subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: _C.inkLight,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        // Accent bar
+        Container(
+          width: 4, height: 38,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [widget.colorA, widget.colorB],
+              begin: Alignment.topCenter, end: Alignment.bottomCenter),
+            borderRadius: BorderRadius.circular(4))),
 
-          const SizedBox(width: 10),
+        // Title + description + topic chips
+        Expanded(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.chapter.title,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
+                color: _C.inkDark, height: 1.3)),
+            const SizedBox(height: 3),
+            Text(widget.chapter.description,
+              style: const TextStyle(fontSize: 11, color: _C.inkLight,
+                fontWeight: FontWeight.w500)),
+            if (widget.chapter.topics.isNotEmpty) ...[
+              const SizedBox(height: 5),
+              Wrap(spacing: 4, runSpacing: 2,
+                children: widget.chapter.topics.take(2).map((t) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: widget.colorA.withOpacity(0.45),
+                    borderRadius: BorderRadius.circular(6)),
+                  child: Text(t, style: const TextStyle(fontSize: 9,
+                    fontWeight: FontWeight.w600, color: _C.inkDark)))).toList()),
+            ],
+          ],
+        )),
 
-          // Start button
-          _StartButton(
-            colorA: widget.colorA,
-            colorB: widget.colorB,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TopicMapPage(
-                    chapterTitle: widget.chapterTitle),
+        const SizedBox(width: 8),
+
+        // Start button only — NO mark-complete toggle
+        _StartButton(
+          colorA: widget.colorA,
+          colorB: widget.colorB,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TopicMapPage(
+                chapterTitle: widget.chapter.title,
+                topics:       widget.chapter.topics,
+                chapterId:    widget.chapter.id,
+                subjectName:  widget.subjectName,   // ← collision-proof key
+                board:        widget.board,
+                className:    widget.className,
               ),
             ),
-          ),
-        ],
-      ),
+          ).then((_) => widget.onReturn()), // ← refresh completion badge
+        ),
+      ]),
     );
   }
 }
 
 // =============================================================================
-// START BUTTON  (animated press)
+// START BUTTON
 // =============================================================================
 class _StartButton extends StatefulWidget {
   final Color colorA, colorB;
   final VoidCallback onTap;
-  const _StartButton({
-    required this.colorA,
-    required this.colorB,
-    required this.onTap,
-  });
-
-  @override
-  State<_StartButton> createState() => _StartButtonState();
+  const _StartButton({required this.colorA, required this.colorB,
+    required this.onTap});
+  @override State<_StartButton> createState() => _StartButtonState();
 }
 
 class _StartButtonState extends State<_StartButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double> _scale;
+  late Animation<double>   _scale;
 
-  @override
-  void initState() {
+  @override void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 130));
+    _ctrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 130));
     _scale = Tween<double>(begin: 1.0, end: 0.88)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  @override void dispose() { _ctrl.dispose(); super.dispose(); }
 
   Future<void> _onTap() async {
     await _ctrl.forward();
@@ -884,43 +679,22 @@ class _StartButtonState extends State<_StartButton>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _onTap,
-      child: ScaleTransition(
-        scale: _scale,
+      child: ScaleTransition(scale: _scale,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [widget.colorA, widget.colorB],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            gradient: LinearGradient(colors: [widget.colorA, widget.colorB],
+              begin: Alignment.topLeft, end: Alignment.bottomRight),
             borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: widget.colorB.withOpacity(0.45),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Start',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: _C.inkDark,
-                ),
-              ),
-              SizedBox(width: 4),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 11, color: _C.inkDark),
-            ],
-          ),
-        ),
-      ),
+            boxShadow: [BoxShadow(color: widget.colorB.withOpacity(0.45),
+                blurRadius: 10, offset: const Offset(0, 4))]),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('Start', style: TextStyle(fontSize: 13,
+              fontWeight: FontWeight.w800, color: _C.inkDark)),
+            SizedBox(width: 4),
+            Icon(Icons.arrow_forward_ios_rounded, size: 11, color: _C.inkDark),
+          ]),
+        )),
     );
   }
 }
